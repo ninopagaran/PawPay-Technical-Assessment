@@ -6,9 +6,8 @@
   so old dots never goes away. changed it to update only the current user
 - early ICE candidates was added before remote description is ready so it fails
   and gets lost. remote description is set first now before adding the queue
-- Fixed connection teardown availability: an `end` signal now clears the
-  `busy` flag for both participants, allowing them to connect again without
-  refreshing or waiting for their sessions to expire.
+- ending a chat didnt clear `busy` for both users so they cant connect again
+  added `end` to the same reset used when a request gets declined
 - Fixed peer-to-peer chat delivery: outgoing messages used a `msg` discriminator
   while receivers only handled `chat`, causing every remote message to be
   silently ignored. Both sides now use the same `chat` message type.
@@ -16,6 +15,8 @@
   now it stays on entry and shows a simple retry error
 - failed WebRTC was only closing the local screen and both users stays busy on
   server. it sends `end` now before cleanup so they can try another connection
+- closing the tab only removed that user and leaves the other side stuck busy
+  leave now releases the known peer and puts a final `end` in their mailbox
 - Decision: kept the existing heartbeat and cleanup design, limiting this change
   to the faulty update scope so subsequent reliability issues can be diagnosed
   and committed independently.

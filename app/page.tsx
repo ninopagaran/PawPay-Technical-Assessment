@@ -253,7 +253,8 @@ export default function Home() {
       case "end": {
         const c = connRef.current;
         if (
-          (c.kind === "incoming" ||
+          (c.kind === "requesting" ||
+            c.kind === "incoming" ||
             c.kind === "connecting" ||
             c.kind === "connected") &&
           c.peerId === sig.fromId
@@ -295,7 +296,10 @@ export default function Home() {
 
   useEffect(() => {
     if (!sessionId || phase !== "live") return;
-    const onLeave = () => leave(sessionId);
+    const onLeave = () => {
+      const c = connRef.current;
+      leave(sessionId, c.kind === "idle" ? undefined : c.peerId);
+    };
     window.addEventListener("pagehide", onLeave);
     window.addEventListener("beforeunload", onLeave);
     return () => {
