@@ -6,6 +6,10 @@
   presence record whenever any user polled. The heartbeat now updates only the
   caller, allowing inactive sessions to expire after the configured 15-second
   stale window.
+- Fixed queued WebRTC ICE handling: candidates that arrived before an SDP
+  offer or answer were incorrectly applied before the remote description and
+  then discarded on failure. The remote description is now installed before
+  queued candidates are flushed, preserving viable connection paths.
 - Decision: kept the existing heartbeat and cleanup design, limiting this change
   to the faulty update scope so subsequent reliability issues can be diagnosed
   and committed independently.
