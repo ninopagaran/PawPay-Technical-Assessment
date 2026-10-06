@@ -4,10 +4,8 @@
 
 - `/api/poll` was updating `lastSeen` for every user when only one user polls
   so old dots never goes away. changed it to update only the current user
-- Fixed queued WebRTC ICE handling: candidates that arrived before an SDP
-  offer or answer were incorrectly applied before the remote description and
-  then discarded on failure. The remote description is now installed before
-  queued candidates are flushed, preserving viable connection paths.
+- early ICE candidates was added before remote description is ready so it fails
+  and gets lost. remote description is set first now before adding the queue
 - Fixed connection teardown availability: an `end` signal now clears the
   `busy` flag for both participants, allowing them to connect again without
   refreshing or waiting for their sessions to expire.
@@ -16,6 +14,8 @@
   silently ignored. Both sides now use the same `chat` message type.
 - `/api/join` errors wasnt checked and map still opens without a presence row
   now it stays on entry and shows a simple retry error
+- failed WebRTC was only closing the local screen and both users stays busy on
+  server. it sends `end` now before cleanup so they can try another connection
 - Decision: kept the existing heartbeat and cleanup design, limiting this change
   to the faulty update scope so subsequent reliability issues can be diagnosed
   and committed independently.
