@@ -304,8 +304,8 @@ export default function Home() {
   }, [sessionId, phase]);
 
   async function handleReady(lat: number, lng: number) {
-    setMyLocation({ lat, lng });
     await join(sessionId, lat, lng);
+    setMyLocation({ lat, lng });
     setPhase("live");
   }
 

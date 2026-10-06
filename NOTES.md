@@ -2,10 +2,8 @@
 
 ## Phase 1 — Make it run
 
-- Fixed stale presence heartbeats: `/api/poll` previously refreshed every
-  presence record whenever any user polled. The heartbeat now updates only the
-  caller, allowing inactive sessions to expire after the configured 15-second
-  stale window.
+- `/api/poll` was updating `lastSeen` for every user when only one user polls
+  so old dots never goes away. changed it to update only the current user
 - Fixed queued WebRTC ICE handling: candidates that arrived before an SDP
   offer or answer were incorrectly applied before the remote description and
   then discarded on failure. The remote description is now installed before
@@ -16,6 +14,8 @@
 - Fixed peer-to-peer chat delivery: outgoing messages used a `msg` discriminator
   while receivers only handled `chat`, causing every remote message to be
   silently ignored. Both sides now use the same `chat` message type.
+- `/api/join` errors wasnt checked and map still opens without a presence row
+  now it stays on entry and shows a simple retry error
 - Decision: kept the existing heartbeat and cleanup design, limiting this change
   to the faulty update scope so subsequent reliability issues can be diagnosed
   and committed independently.
