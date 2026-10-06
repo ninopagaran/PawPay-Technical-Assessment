@@ -13,6 +13,9 @@
 - Fixed connection teardown availability: an `end` signal now clears the
   `busy` flag for both participants, allowing them to connect again without
   refreshing or waiting for their sessions to expire.
+- Fixed peer-to-peer chat delivery: outgoing messages used a `msg` discriminator
+  while receivers only handled `chat`, causing every remote message to be
+  silently ignored. Both sides now use the same `chat` message type.
 - Decision: kept the existing heartbeat and cleanup design, limiting this change
   to the faulty update scope so subsequent reliability issues can be diagnosed
   and committed independently.
