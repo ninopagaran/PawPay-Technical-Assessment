@@ -10,6 +10,9 @@
   offer or answer were incorrectly applied before the remote description and
   then discarded on failure. The remote description is now installed before
   queued candidates are flushed, preserving viable connection paths.
+- Fixed connection teardown availability: an `end` signal now clears the
+  `busy` flag for both participants, allowing them to connect again without
+  refreshing or waiting for their sessions to expire.
 - Decision: kept the existing heartbeat and cleanup design, limiting this change
   to the faulty update scope so subsequent reliability issues can be diagnosed
   and committed independently.
