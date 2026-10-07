@@ -8,15 +8,16 @@
   and gets lost. remote description is set first now before adding the queue
 - ending a chat didnt clear `busy` for both users so they cant connect again
   added `end` to the same reset used when a request gets declined
-- Fixed peer-to-peer chat delivery: outgoing messages used a `msg` discriminator
-  while receivers only handled `chat`, causing every remote message to be
-  silently ignored. Both sides now use the same `chat` message type.
+- chat sender used `msg` but receiver only checks for `chat`, it looks sent on
+  your side but other user gets nothing. both sides uses `chat` now
 - `/api/join` errors wasnt checked and map still opens without a presence row
   now it stays on entry and shows a simple retry error
 - failed WebRTC was only closing the local screen and both users stays busy on
   server. it sends `end` now before cleanup so they can try another connection
 - closing the tab only removed that user and leaves the other side stuck busy
   leave now releases the known peer and puts a final `end` in their mailbox
+- after accept there was no timeout while WebRTC connects, both sides can stay
+  on connecting forever. added 30 second timer then sends `end` and resets
 - Decision: kept the existing heartbeat and cleanup design, limiting this change
   to the faulty update scope so subsequent reliability issues can be diagnosed
   and committed independently.

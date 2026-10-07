@@ -21,6 +21,7 @@ type Conn =
 type VideoState = "none" | "requesting" | "incoming" | "active";
 
 const REQUEST_TIMEOUT_MS = 30_000;
+const CONNECTION_TIMEOUT_MS = 30_000;
 
 export default function Home() {
   const [phase, setPhase] = useState<"gate" | "live">("gate");
@@ -51,6 +52,7 @@ export default function Home() {
   const peerRef = useRef<PeerSession | null>(null);
   const msgId = useRef(0);
   const requestTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const connectionTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
 
   function showNotice(text: string) {
     setNotice(text);
@@ -63,6 +65,9 @@ export default function Home() {
 
   function teardown(message?: string) {
     if (requestTimer.current) clearTimeout(requestTimer.current);
+    if (connectionTimer.current) clearTimeout(connectionTimer.current);
+    requestTimer.current = null;
+    connectionTimer.current = null;
     peerRef.current?.close();
     peerRef.current = null;
     setLocalStream(null);
@@ -88,10 +93,19 @@ export default function Home() {
         }
       },
       onChannelOpen: () => {
+        if (connectionTimer.current) clearTimeout(connectionTimer.current);
+        connectionTimer.current = null;
         setConn({ kind: "connected", peerId });
       },
     });
     peerRef.current = ps;
+    connectionTimer.current = setTimeout(() => {
+      const c = connRef.current;
+      if (c.kind === "connecting" && c.peerId === peerId) {
+        void sendSignal(sessionId, peerId, "end");
+        teardown("Connection timed out.");
+      }
+    }, CONNECTION_TIMEOUT_MS);
   }
 
   function handleControl(ctrl: PeerControl) {
@@ -223,6 +237,7 @@ export default function Home() {
         const c = connRef.current;
         if (c.kind === "requesting" && c.peerId === sig.fromId) {
           if (requestTimer.current) clearTimeout(requestTimer.current);
+          requestTimer.current = null;
           startPeer(sig.fromId, true);
           setConn({ kind: "connecting", peerId: sig.fromId });
         }
@@ -232,6 +247,7 @@ export default function Home() {
         const c = connRef.current;
         if (c.kind === "requesting" && c.peerId === sig.fromId) {
           if (requestTimer.current) clearTimeout(requestTimer.current);
+          requestTimer.current = null;
           teardown("Request declined.");
         }
         break;
