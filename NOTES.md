@@ -53,9 +53,16 @@
   landscape instead of just shrinking. inputs dont zoom the phone now and
   dialog focus stays inside so keyboard use isnt forgotten
 
-## Phase 3 — Make it secure
+## Phase 3 — Make it secure (in progress)
 
-Not started.
+- highest issue was the public peer id also worked like a password, anyone who
+  sees it could read signals, pretend to be that user or delete them. each tab
+  has a separate random token now and only its sha256 hash goes in postgres
+- all join, poll, signal and leave calls checks that token now. adding the column
+  clears old presence rows on deploy which is ok here since those rows is meant
+  to disappear anyway
+- still high and next to fix: a real session can send signals in the wrong order
+  or at unrelated users. request limits and stricter input checks is open too
 
 ## Phase 4 — Make it better
 

@@ -33,6 +33,7 @@ const VIDEO_REQUEST_TIMEOUT_MS = 30_000;
 export default function Home() {
   const [phase, setPhase] = useState<"gate" | "live">("gate");
   const [sessionId] = useState(() => crypto.randomUUID());
+  const [sessionToken] = useState(() => crypto.randomUUID());
   const [peers, setPeers] = useState<PeerDot[]>([]);
   const [messages, setMessages] = useState<ChatMessage[]>([]);
   const [notice, setNotice] = useState<string | null>(null);
@@ -98,7 +99,9 @@ export default function Home() {
     type: SignalMsg["type"],
     payload?: string,
   ) {
-    void sendSignal(sessionId, peerId, type, payload).catch(() => {});
+    void sendSignal(sessionId, sessionToken, peerId, type, payload).catch(
+      () => {},
+    );
   }
 
   function failPeerConnection(peerId: string, message: string) {
@@ -115,7 +118,7 @@ export default function Home() {
   function startPeer(peerId: string, initiator: boolean) {
     const ps = new PeerSession(initiator, {
       onSignal: (type: DescType, payload: string) =>
-        sendSignal(sessionId, peerId, type, payload),
+        sendSignal(sessionId, sessionToken, peerId, type, payload),
       onError: () =>
         failPeerConnection(peerId, "Connection setup failed."),
       onChat: (text) => addMessage(false, text),
@@ -207,7 +210,7 @@ export default function Home() {
   function requestConnection(peerId: string) {
     if (connRef.current.kind !== "idle") return;
     setConn({ kind: "requesting", peerId });
-    void sendSignal(sessionId, peerId, "request").catch(() => {
+    void sendSignal(sessionId, sessionToken, peerId, "request").catch(() => {
       const c = connRef.current;
       if (c.kind === "requesting" && c.peerId === peerId) {
         teardown("Couldn't send request.");
@@ -236,7 +239,7 @@ export default function Home() {
     const peerId = connRef.current.peerId;
     startPeer(peerId, false);
     setConn({ kind: "connecting", peerId });
-    void sendSignal(sessionId, peerId, "accept").catch(() => {
+    void sendSignal(sessionId, sessionToken, peerId, "accept").catch(() => {
       failPeerConnection(peerId, "Couldn't accept request.");
     });
   }
@@ -244,7 +247,7 @@ export default function Home() {
   function declineIncoming() {
     if (connRef.current.kind !== "incoming") return;
     const peerId = connRef.current.peerId;
-    void sendSignal(sessionId, peerId, "decline")
+    void sendSignal(sessionId, sessionToken, peerId, "decline")
       .then(() => {
         const c = connRef.current;
         if (c.kind === "incoming" && c.peerId === peerId) {
@@ -410,7 +413,7 @@ export default function Home() {
 
     const tick = async () => {
       try {
-        const data = await poll(sessionId);
+        const data = await poll(sessionId, sessionToken);
         if (!active) return;
         const wasOffline = pollFailureCount.current >= 3;
         pollFailureCount.current = 0;
@@ -424,13 +427,18 @@ export default function Home() {
           const peerId = c.kind === "idle" ? null : c.peerId;
           if (peerId) {
             try {
-              await sendSignal(sessionId, peerId, "end");
+              await sendSignal(sessionId, sessionToken, peerId, "end");
             } catch {}
             teardownRef.current();
           }
           setPeers([]);
           try {
-            await join(sessionId, myLocation.lat, myLocation.lng);
+            await join(
+              sessionId,
+              sessionToken,
+              myLocation.lat,
+              myLocation.lng,
+            );
             if (!active) return;
             pollFailureCount.current = 0;
             showNotice(
@@ -453,13 +461,17 @@ export default function Home() {
       active = false;
       if (timer) clearTimeout(timer);
     };
-  }, [phase, sessionId, myLocation]);
+  }, [phase, sessionId, sessionToken, myLocation]);
 
   useEffect(() => {
     if (!sessionId || phase !== "live") return;
     const onLeave = () => {
       const c = connRef.current;
-      leave(sessionId, c.kind === "idle" ? undefined : c.peerId);
+      leave(
+        sessionId,
+        sessionToken,
+        c.kind === "idle" ? undefined : c.peerId,
+      );
     };
     window.addEventListener("pagehide", onLeave);
     window.addEventListener("beforeunload", onLeave);
@@ -467,10 +479,10 @@ export default function Home() {
       window.removeEventListener("pagehide", onLeave);
       window.removeEventListener("beforeunload", onLeave);
     };
-  }, [sessionId, phase]);
+  }, [sessionId, sessionToken, phase]);
 
   async function handleReady(lat: number, lng: number) {
-    await join(sessionId, lat, lng);
+    await join(sessionId, sessionToken, lat, lng);
     setMyLocation({ lat, lng });
     setPhase("live");
   }

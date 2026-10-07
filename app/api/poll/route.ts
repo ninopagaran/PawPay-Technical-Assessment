@@ -1,6 +1,7 @@
 import type { NextRequest } from "next/server";
 import { prisma } from "@/lib/prisma";
 import { STALE_MS, SIGNAL_TTL_MS } from "@/lib/presence";
+import { sessionTokenMatches } from "@/lib/session-auth";
 import type { PollResponse } from "@/lib/types";
 
 export const runtime = "nodejs";
@@ -12,9 +13,21 @@ export const dynamic = "force-dynamic";
 export async function GET(request: NextRequest) {
   const params = request.nextUrl.searchParams;
   const id = params.get("id");
+  const sessionToken = request.headers.get("x-pulse-session");
 
   if (!id) {
     return Response.json({ error: "missing id" }, { status: 400 });
+  }
+
+  const presence = await prisma.presence.findUnique({
+    where: { id },
+    select: { sessionHash: true },
+  });
+  if (!presence) {
+    return Response.json({ error: "presence expired" }, { status: 410 });
+  }
+  if (!sessionTokenMatches(presence.sessionHash, sessionToken)) {
+    return Response.json({ error: "invalid session" }, { status: 401 });
   }
 
   const now = Date.now();
@@ -23,7 +36,7 @@ export async function GET(request: NextRequest) {
 
   // 1) Heartbeat — refresh lastSeen for the caller.
   const heartbeat = await prisma.presence.updateMany({
-    where: { id },
+    where: { id, sessionHash: presence.sessionHash },
     data: { lastSeen: new Date(now) },
   });
   if (heartbeat.count === 0) {
