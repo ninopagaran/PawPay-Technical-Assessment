@@ -20,10 +20,12 @@
   on connecting forever. added 30 second timer then sends `end` and resets
 - video request can wait forever and late camera permission can turn video back
   on after it was cancelled. added request timeout and cancels pending media too
+- if polling stops long enough the presence row can be deleted, after polling
+  comes back the user stays invisible. client now rejoins and shows offline state
 - started with small fixes while finding each broken flow. related changes like
   video lifecycle is grouped together once the whole behavior can be checked
-- Testing: verified with lint and a production build. End-to-end two-user testing
-  remains pending valid PostgreSQL and Mapbox credentials.
+- lint and production build passes after the grouped fixes. real two browser test
+  still waiting for valid postgres and mapbox credentials
 
 ## Phase 2 — Make it good
 

@@ -6,7 +6,13 @@ import WorldMap from "./components/WorldMap";
 import ConnectionPrompt from "./components/ConnectionPrompt";
 import ChatPanel, { type ChatMessage } from "./components/ChatPanel";
 import VideoPanel from "./components/VideoPanel";
-import { join, leave, poll, sendSignal } from "@/lib/api";
+import {
+  join,
+  leave,
+  poll,
+  PresenceExpiredError,
+  sendSignal,
+} from "@/lib/api";
 import { PeerSession, type DescType, type PeerControl } from "@/lib/webrtc";
 import { POLL_INTERVAL_MS } from "@/lib/presence";
 import { type PeerDot, type SignalMsg } from "@/lib/types";
@@ -55,6 +61,7 @@ export default function Home() {
   const requestTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
   const connectionTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
   const videoRequestTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const pollFailureCount = useRef(0);
 
   function showNotice(text: string) {
     setNotice(text);
@@ -325,22 +332,62 @@ export default function Home() {
   }
 
   const processSignalRef = useRef(processSignal);
+  const teardownRef = useRef(teardown);
   useEffect(() => {
     processSignalRef.current = processSignal;
+    teardownRef.current = teardown;
   });
 
   useEffect(() => {
-    if (phase !== "live" || !sessionId) return;
+    if (phase !== "live" || !sessionId || !myLocation) return;
     let active = true;
     let timer: ReturnType<typeof setTimeout> | undefined;
+
+    const recordPollFailure = () => {
+      pollFailureCount.current += 1;
+      if (pollFailureCount.current === 3) {
+        setPeers([]);
+        showNotice("Connection lost. Retrying…");
+      }
+    };
 
     const tick = async () => {
       try {
         const data = await poll(sessionId);
         if (!active) return;
+        const wasOffline = pollFailureCount.current >= 3;
+        pollFailureCount.current = 0;
         setPeers(data.peers);
         for (const s of data.signals) processSignalRef.current(s);
-      } catch {}
+        if (wasOffline) showNotice("Back online.");
+      } catch (error) {
+        if (!active) return;
+        if (error instanceof PresenceExpiredError) {
+          const c = connRef.current;
+          const peerId = c.kind === "idle" ? null : c.peerId;
+          if (peerId) {
+            try {
+              await sendSignal(sessionId, peerId, "end");
+            } catch {}
+            teardownRef.current();
+          }
+          setPeers([]);
+          try {
+            await join(sessionId, myLocation.lat, myLocation.lng);
+            if (!active) return;
+            pollFailureCount.current = 0;
+            showNotice(
+              peerId
+                ? "Session restored. Previous connection ended."
+                : "Session restored.",
+            );
+          } catch {
+            recordPollFailure();
+          }
+        } else {
+          recordPollFailure();
+        }
+      }
       if (active) timer = setTimeout(tick, POLL_INTERVAL_MS);
     };
     tick();
@@ -349,7 +396,7 @@ export default function Home() {
       active = false;
       if (timer) clearTimeout(timer);
     };
-  }, [phase, sessionId]);
+  }, [phase, sessionId, myLocation]);
 
   useEffect(() => {
     if (!sessionId || phase !== "live") return;
