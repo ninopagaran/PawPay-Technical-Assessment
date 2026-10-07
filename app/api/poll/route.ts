@@ -1,6 +1,6 @@
 import type { NextRequest } from "next/server";
 import { prisma } from "@/lib/prisma";
-import { isValidSessionId } from "@/lib/api-security";
+import { isValidSessionId, sameOriginError } from "@/lib/api-security";
 import { STALE_MS, SIGNAL_TTL_MS } from "@/lib/presence";
 import { rateLimit } from "@/lib/rate-limit";
 import { isValidSessionToken, sessionTokenMatches } from "@/lib/session-auth";
@@ -15,6 +15,9 @@ const POLL_LIMIT_PER_MINUTE = 60;
 // It (1) heartbeats the caller, (2) reaps stale presence + orphan signals,
 // (3) returns the filtered online peers, and (4) drains this user's mailbox.
 export async function GET(request: NextRequest) {
+  const crossOrigin = sameOriginError(request);
+  if (crossOrigin) return crossOrigin;
+
   const params = request.nextUrl.searchParams;
   const id = params.get("id");
   const sessionToken = request.headers.get("x-pulse-session");

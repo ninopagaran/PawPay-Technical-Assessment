@@ -5,6 +5,7 @@ import {
   isValidSessionId,
   jsonBodyError,
   readJsonObject,
+  sameOriginError,
 } from "@/lib/api-security";
 import { rateLimit } from "@/lib/rate-limit";
 import { isValidSessionToken, sessionTokenMatches } from "@/lib/session-auth";
@@ -39,6 +40,9 @@ const VALID_TYPES: SignalType[] = [
 // Drops one message into the recipient's mailbox. Also manages the `busy`
 // flag so a user can only be in one connection at a time.
 export async function POST(request: NextRequest) {
+  const crossOrigin = sameOriginError(request);
+  if (crossOrigin) return crossOrigin;
+
   const parsed = await readJsonObject(request, MAX_SIGNAL_BODY_BYTES);
   if (!parsed.ok) return jsonBodyError(parsed);
   if (

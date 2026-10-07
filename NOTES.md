@@ -53,7 +53,7 @@
   landscape instead of just shrinking. inputs dont zoom the phone now and
   dialog focus stays inside so keyboard use isnt forgotten
 
-## Phase 3 — Make it secure (in progress)
+## Phase 3 — Make it secure (complete)
 
 - highest issue was the public peer id also worked like a password, anyone who
   sees it could read signals, pretend to be that user or delete them. each tab
@@ -77,6 +77,14 @@
 - audit still reports issues inside prisma and eslint build tools. they arent in
   the apps request path and the offered fix downgrades prisma a full major, so i
   left that forced fix out instead of trading it for a risky downgrade
+- api routes now checks browser origin and fetch metadata too, so another site
+  cant make a tab join, drain polling signals or change a connection
+- added no-store api responses and headers for framing, sniffing, referrers and
+  browser permissions. the csp only opens mapbox api/events plus its blob worker
+  and the camera, mic and location permissions stays on pulse itself
+- csp still needs unsafe-inline for the static next output. it still blocks any
+  unlisted script/network source, a nonce setup would mean making the page
+  dynamic and didnt feel worth that cost for this anonymous app
 
 ## Phase 4 — Make it better
 

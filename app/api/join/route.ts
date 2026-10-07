@@ -5,6 +5,7 @@ import {
   isValidSessionId,
   jsonBodyError,
   readJsonObject,
+  sameOriginError,
 } from "@/lib/api-security";
 import { applyPrivacyOffset, isValidLatLng } from "@/lib/geo";
 import { rateLimit } from "@/lib/rate-limit";
@@ -24,6 +25,9 @@ const JOIN_LIMIT_PER_MINUTE = 30;
 // Applies a 1–3 km privacy offset and upserts the presence row. Raw
 // coordinates are never stored.
 export async function POST(request: NextRequest) {
+  const crossOrigin = sameOriginError(request);
+  if (crossOrigin) return crossOrigin;
+
   const parsed = await readJsonObject(request, MAX_JOIN_BODY_BYTES);
   if (!parsed.ok) return jsonBodyError(parsed);
   if (!hasOnlyKeys(parsed.value, ["id", "sessionToken", "lat", "lng"])) {

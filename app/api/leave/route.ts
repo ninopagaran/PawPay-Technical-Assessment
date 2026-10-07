@@ -5,6 +5,7 @@ import {
   isValidSessionId,
   jsonBodyError,
   readJsonObject,
+  sameOriginError,
 } from "@/lib/api-security";
 import { isValidSessionToken, sessionTokenMatches } from "@/lib/session-auth";
 
@@ -18,6 +19,9 @@ const MAX_LEAVE_BODY_BYTES = 1_024;
 // server state, never from the request. Called via navigator.sendBeacon on tab
 // close, using an application/json Blob so the same strict parser can be used.
 export async function POST(request: NextRequest) {
+  const crossOrigin = sameOriginError(request);
+  if (crossOrigin) return crossOrigin;
+
   const parsed = await readJsonObject(request, MAX_LEAVE_BODY_BYTES);
   if (!parsed.ok) return jsonBodyError(parsed);
   if (!hasOnlyKeys(parsed.value, ["id", "sessionToken"])) {

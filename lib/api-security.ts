@@ -17,6 +17,32 @@ export function isValidSessionId(value: unknown): value is string {
   return typeof value === "string" && SESSION_ID_PATTERN.test(value);
 }
 
+export function sameOriginError(request: Request): Response | null {
+  const fetchSite = request.headers.get("sec-fetch-site");
+  if (fetchSite && fetchSite !== "same-origin" && fetchSite !== "none") {
+    return Response.json({ error: "cross-origin request blocked" }, { status: 403 });
+  }
+
+  const origin = request.headers.get("origin");
+  if (!origin) return null;
+
+  try {
+    if (new URL(origin).origin !== new URL(request.url).origin) {
+      return Response.json(
+        { error: "cross-origin request blocked" },
+        { status: 403 },
+      );
+    }
+  } catch {
+    return Response.json(
+      { error: "cross-origin request blocked" },
+      { status: 403 },
+    );
+  }
+
+  return null;
+}
+
 export function hasOnlyKeys(
   value: JsonObject,
   required: readonly string[],
