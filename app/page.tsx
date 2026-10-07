@@ -16,6 +16,12 @@ import {
 import { PeerSession, type DescType, type PeerControl } from "@/lib/webrtc";
 import { POLL_INTERVAL_MS } from "@/lib/presence";
 import { type PeerDot, type SignalMsg } from "@/lib/types";
+import {
+  compareConversationSparkEvents,
+  getConversationSpark,
+  pickConversationSpark,
+  type ConversationSparkEvent,
+} from "@/lib/conversation-sparks";
 
 type Conn =
   | { kind: "idle" }
@@ -25,6 +31,7 @@ type Conn =
   | { kind: "connected"; peerId: string };
 
 type VideoState = "none" | "requesting" | "incoming" | "active";
+type SharedSpark = { event: ConversationSparkEvent; mine: boolean };
 
 const REQUEST_TIMEOUT_MS = 30_000;
 const CONNECTION_TIMEOUT_MS = 30_000;
@@ -36,6 +43,7 @@ export default function Home() {
   const [sessionToken] = useState(() => crypto.randomUUID());
   const [peers, setPeers] = useState<PeerDot[]>([]);
   const [messages, setMessages] = useState<ChatMessage[]>([]);
+  const [sharedSpark, setSharedSpark] = useState<SharedSpark | null>(null);
   const [notice, setNotice] = useState<string | null>(null);
   const [localStream, setLocalStream] = useState<MediaStream | null>(null);
   const [remoteStream, setRemoteStream] = useState<MediaStream | null>(null);
@@ -63,6 +71,7 @@ export default function Home() {
   const connectionTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
   const videoRequestTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
   const pollFailureCount = useRef(0);
+  const sparkClock = useRef(0);
 
   function showNotice(text: string) {
     setNotice(text);
@@ -90,6 +99,8 @@ export default function Home() {
     setRemoteStream(null);
     setVideo("none");
     setMessages([]);
+    setSharedSpark(null);
+    sparkClock.current = 0;
     setConn({ kind: "idle" });
     if (message) showNotice(message);
   }
@@ -122,6 +133,16 @@ export default function Home() {
       onError: () =>
         failPeerConnection(peerId, "Connection setup failed."),
       onChat: (text) => addMessage(false, text),
+      onSpark: (event) => {
+        if (event.author !== peerId) return;
+        sparkClock.current = Math.max(sparkClock.current, event.clock);
+        setSharedSpark((current) =>
+          !current ||
+          compareConversationSparkEvents(event, current.event) > 0
+            ? { event, mine: false }
+            : current,
+        );
+      },
       onControl: (ctrl) => handleControl(ctrl),
       onRemoteStream: (stream) => setRemoteStream(stream),
       onConnectionState: (state) => {
@@ -263,6 +284,24 @@ export default function Home() {
       sendSignalQuietly(c.peerId, "end");
     }
     teardown();
+  }
+
+  function shareConversationSpark() {
+    const ps = peerRef.current;
+    if (!ps || connRef.current.kind !== "connected") return;
+
+    const event: ConversationSparkEvent = {
+      id: pickConversationSpark(sharedSpark?.event.id),
+      clock: sparkClock.current + 1,
+      author: sessionId,
+    };
+    if (!ps.sendSpark(event)) {
+      showNotice("Couldn't share a spark.");
+      return;
+    }
+
+    sparkClock.current = event.clock;
+    setSharedSpark({ event, mine: true });
   }
 
   function startVideoRequest() {
@@ -538,6 +577,15 @@ export default function Home() {
       {inChat && (
         <ChatPanel
           messages={messages}
+          spark={
+            sharedSpark
+              ? {
+                  value: getConversationSpark(sharedSpark.event.id),
+                  mine: sharedSpark.mine,
+                  key: `${sharedSpark.event.clock}:${sharedSpark.event.author}`,
+                }
+              : null
+          }
           connected={conn.kind === "connected"}
           videoBusy={video !== "none"}
           onSend={(text) => {
@@ -548,6 +596,7 @@ export default function Home() {
             addMessage(true, text);
             return true;
           }}
+          onNewSpark={shareConversationSpark}
           onStartVideo={startVideoRequest}
           onEnd={endConnection}
         />

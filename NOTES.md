@@ -86,6 +86,15 @@
   unlisted script/network source, a nonce setup would mean making the page
   dynamic and didnt feel worth that cost for this anonymous app
 
-## Phase 4 — Make it better
+## Phase 4 — Make it better (complete)
 
-Not started.
+- added signal sparks for when two strangers gets connected but nobody knows
+  what to say. either person can put one shared question into the chat
+- sparks goes through the same webrtc data channel as chat, server and postgres
+  never gets the question or keeps a history of it
+- used a small fixed prompt list so random content isnt treated as trusted data
+  and both sides checks the spark id before showing it
+- if both people presses spark at nearly the same time, a counter then session
+  id decides which one wins so both screens still ends up on the same question
+- tested it with two real headless browsers including replace, same-time clicks
+  and sending normal chat after, so the extra feature doesnt break the basics

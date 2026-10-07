@@ -1,4 +1,8 @@
 import { MAX_CHAT_MESSAGE_LENGTH } from "@/lib/types";
+import {
+  isConversationSparkEvent,
+  type ConversationSparkEvent,
+} from "@/lib/conversation-sparks";
 
 export type DescType = "offer" | "answer" | "ice";
 export type PeerControl =
@@ -11,6 +15,7 @@ interface PeerCallbacks {
   onSignal: (type: DescType, payload: string) => Promise<void>;
   onError: () => void;
   onChat: (text: string) => void;
+  onSpark: (event: ConversationSparkEvent) => void;
   onControl: (ctrl: PeerControl) => void;
   onRemoteStream: (stream: MediaStream | null) => void;
   onConnectionState: (state: RTCPeerConnectionState) => void;
@@ -103,6 +108,12 @@ export class PeerSession {
           msg.text.length <= MAX_CHAT_MESSAGE_LENGTH
         ) {
           this.cb.onChat(msg.text);
+        } else if (msg.t === "spark" && isConversationSparkEvent(msg)) {
+          this.cb.onSpark({
+            id: msg.id,
+            clock: msg.clock,
+            author: msg.author,
+          });
         } else if (msg.t === "ctrl" && typeof msg.ctrl === "string") {
           this.cb.onControl(msg.ctrl as PeerControl);
         }
@@ -159,6 +170,10 @@ export class PeerSession {
   sendChat(text: string): boolean {
     if (!text || text.length > MAX_CHAT_MESSAGE_LENGTH) return false;
     return this.safeSend({ t: "chat", text });
+  }
+
+  sendSpark(event: ConversationSparkEvent): boolean {
+    return this.safeSend({ t: "spark", ...event });
   }
 
   sendControl(ctrl: PeerControl): boolean {

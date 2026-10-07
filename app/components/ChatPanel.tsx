@@ -1,6 +1,7 @@
 "use client";
 
 import { useEffect, useRef, useState } from "react";
+import type { ConversationSpark } from "@/lib/conversation-sparks";
 import { MAX_CHAT_MESSAGE_LENGTH } from "@/lib/types";
 
 export interface ChatMessage {
@@ -11,25 +12,30 @@ export interface ChatMessage {
 
 export default function ChatPanel({
   messages,
+  spark,
   connected,
   videoBusy,
   onSend,
+  onNewSpark,
   onStartVideo,
   onEnd,
 }: {
   messages: ChatMessage[];
+  spark: { value: ConversationSpark; mine: boolean; key: string } | null;
   connected: boolean;
   videoBusy: boolean;
   onSend: (text: string) => boolean;
+  onNewSpark: () => void;
   onStartVideo: () => void;
   onEnd: () => void;
 }) {
   const [draft, setDraft] = useState("");
   const endRef = useRef<HTMLDivElement>(null);
+  const sparkKey = spark?.key;
 
   useEffect(() => {
     endRef.current?.scrollIntoView({ behavior: "smooth" });
-  }, [messages]);
+  }, [messages, sparkKey]);
 
   function submit(e: React.FormEvent) {
     e.preventDefault();
@@ -55,6 +61,18 @@ export default function ChatPanel({
           </div>
         </div>
         <div className="chat-header-actions">
+          <button
+            onClick={onNewSpark}
+            disabled={!connected}
+            className="chat-icon-button chat-spark-icon"
+            aria-label="Share a conversation spark"
+            title="Share a conversation spark"
+          >
+            <svg viewBox="0 0 24 24" aria-hidden="true">
+              <path d="m12 3 1.6 5.4L19 10l-5.4 1.6L12 17l-1.6-5.4L5 10l5.4-1.6z" />
+              <path d="m18.5 16 .7 2.3 2.3.7-2.3.7-.7 2.3-.7-2.3-2.3-.7 2.3-.7z" />
+            </svg>
+          </button>
           <button
             onClick={onStartVideo}
             disabled={!connected || videoBusy}
@@ -87,7 +105,24 @@ export default function ChatPanel({
           <span />
         </div>
 
-        {messages.length === 0 && (
+        {spark && (
+          <section
+            key={spark.key}
+            className="chat-spark"
+            aria-label="Shared conversation spark"
+          >
+            <div className="chat-spark-meta">
+              <span>Shared spark / {spark.value.label}</span>
+              <button type="button" onClick={onNewSpark} disabled={!connected}>
+                Another
+              </button>
+            </div>
+            <blockquote>{spark.value.prompt}</blockquote>
+            <p>{spark.mine ? "Sent by you" : "Sent by stranger"} · Peer to peer</p>
+          </section>
+        )}
+
+        {messages.length === 0 && !spark && (
           <div className="chat-empty">
             <div className="chat-empty-mark" aria-hidden="true">
               <span />
@@ -96,9 +131,18 @@ export default function ChatPanel({
             </div>
             <h3>Break the silence.</h3>
             <p>
-              Say hello to someone sharing the same night. Messages disappear
-              when either of you leaves.
+              Say hello, or send one shared question when neither of you knows
+              where to begin.
             </p>
+            <button
+              type="button"
+              className="chat-spark-cta"
+              onClick={onNewSpark}
+              disabled={!connected}
+            >
+              <span aria-hidden="true">✦</span>
+              Send a spark
+            </button>
           </div>
         )}
         {messages.map((m) => (
