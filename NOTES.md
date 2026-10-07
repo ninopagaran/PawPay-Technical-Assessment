@@ -1,6 +1,6 @@
 # Pulse Assessment Notes
 
-## Phase 1 — Make it run
+## Phase 1 — Make it run (code complete, live test pending)
 
 - `/api/poll` was updating `lastSeen` for every user when only one user polls
   so old dots never goes away. changed it to update only the current user
@@ -30,10 +30,12 @@
   shows and map just stays blank. token and map load errors has a clear state now
 - busy dots is disabled, marker positions refresh and online count includes me
   so map doesnt show clickable or wrong state
+- signaling api errors was treated like success and failed SDP work can reject
+  in background. they now end the broken flow and shows a useful error
 - started with small fixes while finding each broken flow. related changes like
   video lifecycle is grouped together once the whole behavior can be checked
-- lint and production build passes after the grouped fixes. real two browser test
-  still waiting for valid postgres and mapbox credentials
+- phase 1 code work is done and lint/build passes. real two browser test still
+  needs valid postgres and mapbox credentials before calling it fully verified
 
 ## Phase 2 — Make it good
 

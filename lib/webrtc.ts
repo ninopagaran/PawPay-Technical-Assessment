@@ -8,7 +8,8 @@ export type PeerControl =
   | "video-end";
 
 interface PeerCallbacks {
-  onSignal: (type: DescType, payload: string) => void;
+  onSignal: (type: DescType, payload: string) => Promise<void>;
+  onError: () => void;
   onChat: (text: string) => void;
   onControl: (ctrl: PeerControl) => void;
   onRemoteStream: (stream: MediaStream | null) => void;
@@ -41,7 +42,9 @@ export class PeerSession {
 
     this.pc.onicecandidate = ({ candidate }) => {
       if (candidate) {
-        this.cb.onSignal("ice", JSON.stringify(candidate));
+        void this.cb
+          .onSignal("ice", JSON.stringify(candidate))
+          .catch(() => this.cb.onError());
       }
     };
 
@@ -50,8 +53,13 @@ export class PeerSession {
         this.makingOffer = true;
         await this.pc.setLocalDescription();
         if (this.pc.localDescription) {
-          this.cb.onSignal("offer", JSON.stringify(this.pc.localDescription));
+          await this.cb.onSignal(
+            "offer",
+            JSON.stringify(this.pc.localDescription),
+          );
         }
+      } catch {
+        if (!this.closed) this.cb.onError();
       } finally {
         this.makingOffer = false;
       }
@@ -129,7 +137,10 @@ export class PeerSession {
     if (desc.type === "offer") {
       await this.pc.setLocalDescription();
       if (this.pc.localDescription) {
-        this.cb.onSignal("answer", JSON.stringify(this.pc.localDescription));
+        await this.cb.onSignal(
+          "answer",
+          JSON.stringify(this.pc.localDescription),
+        );
       }
     }
   }

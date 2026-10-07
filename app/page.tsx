@@ -93,17 +93,37 @@ export default function Home() {
     if (message) showNotice(message);
   }
 
+  function sendSignalQuietly(
+    peerId: string,
+    type: SignalMsg["type"],
+    payload?: string,
+  ) {
+    void sendSignal(sessionId, peerId, type, payload).catch(() => {});
+  }
+
+  function failPeerConnection(peerId: string, message: string) {
+    const c = connRef.current;
+    if (
+      (c.kind === "connecting" || c.kind === "connected") &&
+      c.peerId === peerId
+    ) {
+      sendSignalQuietly(peerId, "end");
+      teardown(message);
+    }
+  }
+
   function startPeer(peerId: string, initiator: boolean) {
     const ps = new PeerSession(initiator, {
-      onSignal: (type: DescType, payload: string) => {
-        void sendSignal(sessionId, peerId, type, payload);
-      },
+      onSignal: (type: DescType, payload: string) =>
+        sendSignal(sessionId, peerId, type, payload),
+      onError: () =>
+        failPeerConnection(peerId, "Connection setup failed."),
       onChat: (text) => addMessage(false, text),
       onControl: (ctrl) => handleControl(ctrl),
       onRemoteStream: (stream) => setRemoteStream(stream),
       onConnectionState: (state) => {
         if (state === "failed") {
-          void sendSignal(sessionId, peerId, "end");
+          sendSignalQuietly(peerId, "end");
           teardown("Connection failed (network).");
         }
       },
@@ -118,7 +138,7 @@ export default function Home() {
           (c.kind === "connecting" || c.kind === "connected") &&
           c.peerId === peerId
         ) {
-          void sendSignal(sessionId, peerId, "end");
+          sendSignalQuietly(peerId, "end");
           teardown("Connection closed.");
         }
       },
@@ -127,7 +147,7 @@ export default function Home() {
     connectionTimer.current = setTimeout(() => {
       const c = connRef.current;
       if (c.kind === "connecting" && c.peerId === peerId) {
-        void sendSignal(sessionId, peerId, "end");
+        sendSignalQuietly(peerId, "end");
         teardown("Connection timed out.");
       }
     }, CONNECTION_TIMEOUT_MS);
@@ -187,13 +207,18 @@ export default function Home() {
   function requestConnection(peerId: string) {
     if (connRef.current.kind !== "idle") return;
     setConn({ kind: "requesting", peerId });
-    void sendSignal(sessionId, peerId, "request");
+    void sendSignal(sessionId, peerId, "request").catch(() => {
+      const c = connRef.current;
+      if (c.kind === "requesting" && c.peerId === peerId) {
+        teardown("Couldn't send request.");
+      }
+    });
     requestTimer.current = setTimeout(() => {
       if (
         connRef.current.kind === "requesting" &&
         connRef.current.peerId === peerId
       ) {
-        void sendSignal(sessionId, peerId, "end");
+        sendSignalQuietly(peerId, "end");
         teardown("No answer.");
       }
     }, REQUEST_TIMEOUT_MS);
@@ -201,7 +226,7 @@ export default function Home() {
 
   function cancelRequest() {
     if (connRef.current.kind === "requesting") {
-      void sendSignal(sessionId, connRef.current.peerId, "end");
+      sendSignalQuietly(connRef.current.peerId, "end");
     }
     teardown();
   }
@@ -210,20 +235,29 @@ export default function Home() {
     if (connRef.current.kind !== "incoming") return;
     const peerId = connRef.current.peerId;
     startPeer(peerId, false);
-    void sendSignal(sessionId, peerId, "accept");
     setConn({ kind: "connecting", peerId });
+    void sendSignal(sessionId, peerId, "accept").catch(() => {
+      failPeerConnection(peerId, "Couldn't accept request.");
+    });
   }
 
   function declineIncoming() {
     if (connRef.current.kind !== "incoming") return;
-    void sendSignal(sessionId, connRef.current.peerId, "decline");
-    setConn({ kind: "idle" });
+    const peerId = connRef.current.peerId;
+    void sendSignal(sessionId, peerId, "decline")
+      .then(() => {
+        const c = connRef.current;
+        if (c.kind === "incoming" && c.peerId === peerId) {
+          setConn({ kind: "idle" });
+        }
+      })
+      .catch(() => showNotice("Couldn't decline. Please try again."));
   }
 
   function endConnection() {
     const c = connRef.current;
     if (c.kind === "connecting" || c.kind === "connected") {
-      void sendSignal(sessionId, c.peerId, "end");
+      sendSignalQuietly(c.peerId, "end");
     }
     teardown();
   }
@@ -296,7 +330,7 @@ export default function Home() {
         if (connRef.current.kind === "idle") {
           setConn({ kind: "incoming", peerId: sig.fromId });
         } else {
-          void sendSignal(sessionId, sig.fromId, "decline");
+          sendSignalQuietly(sig.fromId, "decline");
         }
         break;
       }
@@ -325,11 +359,15 @@ export default function Home() {
         const c = connRef.current;
         const peerId =
           c.kind === "connecting" || c.kind === "connected" ? c.peerId : null;
-        if (peerRef.current && peerId === sig.fromId) {
-          void peerRef.current.handleSignal(
-            sig.type as DescType,
-            sig.payload ?? "",
-          );
+        const ps = peerRef.current;
+        if (ps && peerId === sig.fromId) {
+          void ps
+            .handleSignal(sig.type as DescType, sig.payload ?? "")
+            .catch(() => {
+              if (peerRef.current === ps) {
+                failPeerConnection(sig.fromId, "Connection setup failed.");
+              }
+            });
         }
         break;
       }
