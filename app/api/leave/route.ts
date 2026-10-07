@@ -1,29 +1,35 @@
 import type { NextRequest } from "next/server";
 import { prisma } from "@/lib/prisma";
-import { sessionTokenMatches } from "@/lib/session-auth";
+import {
+  hasOnlyKeys,
+  isValidSessionId,
+  jsonBodyError,
+  readJsonObject,
+} from "@/lib/api-security";
+import { isValidSessionToken, sessionTokenMatches } from "@/lib/session-auth";
 
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
 
+const MAX_LEAVE_BODY_BYTES = 1_024;
+
 // POST /api/leave — body { id, sessionToken }. Removes the presence row and any
 // pending signals to/from this user. The paired peer comes only from trusted
 // server state, never from the request. Called via navigator.sendBeacon on tab
-// close, so the body may arrive as text — parse defensively.
+// close, using an application/json Blob so the same strict parser can be used.
 export async function POST(request: NextRequest) {
-  let id: string | undefined;
-  let sessionToken: string | undefined;
-  try {
-    const text = await request.text();
-    const body = text ? (JSON.parse(text) as Record<string, unknown>) : {};
-    id = typeof body.id === "string" ? body.id : undefined;
-    sessionToken =
-      typeof body.sessionToken === "string" ? body.sessionToken : undefined;
-  } catch {
-    id = undefined;
+  const parsed = await readJsonObject(request, MAX_LEAVE_BODY_BYTES);
+  if (!parsed.ok) return jsonBodyError(parsed);
+  if (!hasOnlyKeys(parsed.value, ["id", "sessionToken"])) {
+    return Response.json({ error: "invalid body" }, { status: 400 });
   }
+  const { id, sessionToken } = parsed.value;
 
-  if (typeof id !== "string" || !id) {
+  if (!isValidSessionId(id)) {
     return Response.json({ error: "invalid id" }, { status: 400 });
+  }
+  if (!isValidSessionToken(sessionToken)) {
+    return Response.json({ error: "invalid session" }, { status: 401 });
   }
 
   const presence = await prisma.presence.findUnique({

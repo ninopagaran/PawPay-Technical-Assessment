@@ -65,7 +65,12 @@
   unrelated users. postgres owns the pending/connected pair now and changes the
   state plus mailbox together so even two requests at once cant half claim them
 - leave doesnt trust a peer id from the browser anymore either, it only releases
-  whoever the server already paired. request limits and stricter inputs is open
+  whoever the server already paired
+- api bodies has a real byte limit now and ids, object keys and webrtc payloads
+  gets checked before touching postgres. weird extra fields is rejected too
+- request limits is stored in postgres so it works across vercel instances. the
+  key uses a sha256 of the ip instead of keeping the raw address, with enough
+  room for normal polling and ice bursts
 
 ## Phase 4 — Make it better
 

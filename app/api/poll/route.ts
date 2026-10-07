@@ -1,11 +1,15 @@
 import type { NextRequest } from "next/server";
 import { prisma } from "@/lib/prisma";
+import { isValidSessionId } from "@/lib/api-security";
 import { STALE_MS, SIGNAL_TTL_MS } from "@/lib/presence";
-import { sessionTokenMatches } from "@/lib/session-auth";
+import { rateLimit } from "@/lib/rate-limit";
+import { isValidSessionToken, sessionTokenMatches } from "@/lib/session-auth";
 import type { PollResponse } from "@/lib/types";
 
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
+
+const POLL_LIMIT_PER_MINUTE = 60;
 
 // GET /api/poll?id= — the single endpoint that drives the live map.
 // It (1) heartbeats the caller, (2) reaps stale presence + orphan signals,
@@ -15,8 +19,15 @@ export async function GET(request: NextRequest) {
   const id = params.get("id");
   const sessionToken = request.headers.get("x-pulse-session");
 
-  if (!id) {
-    return Response.json({ error: "missing id" }, { status: 400 });
+  if (
+    !isValidSessionId(id) ||
+    params.getAll("id").length !== 1 ||
+    [...params.keys()].some((key) => key !== "id")
+  ) {
+    return Response.json({ error: "invalid id" }, { status: 400 });
+  }
+  if (!isValidSessionToken(sessionToken)) {
+    return Response.json({ error: "invalid session" }, { status: 401 });
   }
 
   const presence = await prisma.presence.findUnique({
@@ -29,6 +40,13 @@ export async function GET(request: NextRequest) {
   if (!sessionTokenMatches(presence.sessionHash, sessionToken)) {
     return Response.json({ error: "invalid session" }, { status: 401 });
   }
+
+  const limited = await rateLimit(
+    request,
+    `poll:${id}`,
+    POLL_LIMIT_PER_MINUTE,
+  );
+  if (limited) return limited;
 
   const now = Date.now();
   const staleCutoff = new Date(now - STALE_MS);

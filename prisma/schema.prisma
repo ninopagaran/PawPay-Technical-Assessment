@@ -37,3 +37,11 @@ model Signal {
 
   @@index([toId])
 }
+
+model RateLimit {
+  key       String   @id // scope + one-way hash of the requester IP
+  count     Int
+  expiresAt DateTime
+
+  @@index([expiresAt])
+}

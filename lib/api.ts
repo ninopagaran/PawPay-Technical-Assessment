@@ -53,14 +53,19 @@ export async function sendSignal(
 // Fire-and-forget leave that survives the tab closing.
 export function leave(id: string, sessionToken: string): void {
   const body = JSON.stringify({ id, sessionToken });
-  if (typeof navigator !== "undefined" && navigator.sendBeacon) {
-    navigator.sendBeacon("/api/leave", body);
-  } else {
-    void fetch("/api/leave", {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body,
-      keepalive: true,
-    });
+  if (
+    typeof navigator !== "undefined" &&
+    navigator.sendBeacon?.(
+      "/api/leave",
+      new Blob([body], { type: "application/json" }),
+    )
+  ) {
+    return;
   }
+  void fetch("/api/leave", {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body,
+    keepalive: true,
+  });
 }
