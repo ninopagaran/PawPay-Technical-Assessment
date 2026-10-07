@@ -22,6 +22,7 @@ export default function ConnectionPrompt({
   const titleId = useId();
   const descriptionId = useId();
   const acceptRef = useRef<HTMLButtonElement>(null);
+  const declineRef = useRef<HTMLButtonElement>(null);
   const onDeclineRef = useRef(onDecline);
 
   useEffect(() => {
@@ -29,14 +30,34 @@ export default function ConnectionPrompt({
   });
 
   useEffect(() => {
-    acceptRef.current?.focus();
+    const previousFocus = document.activeElement;
+    declineRef.current?.focus();
 
     const onKeyDown = (event: KeyboardEvent) => {
-      if (event.key === "Escape") onDeclineRef.current();
+      if (event.key === "Escape") {
+        onDeclineRef.current();
+        return;
+      }
+
+      if (event.key !== "Tab") return;
+      const first = declineRef.current;
+      const last = acceptRef.current;
+      if (!first || !last) return;
+
+      if (event.shiftKey && document.activeElement === first) {
+        event.preventDefault();
+        last.focus();
+      } else if (!event.shiftKey && document.activeElement === last) {
+        event.preventDefault();
+        first.focus();
+      }
     };
 
     window.addEventListener("keydown", onKeyDown);
-    return () => window.removeEventListener("keydown", onKeyDown);
+    return () => {
+      window.removeEventListener("keydown", onKeyDown);
+      if (previousFocus instanceof HTMLElement) previousFocus.focus();
+    };
   }, []);
 
   return (
@@ -46,7 +67,7 @@ export default function ConnectionPrompt({
         role="dialog"
         aria-modal="true"
         aria-labelledby={titleId}
-        aria-describedby={subtitle ? descriptionId : undefined}
+        aria-describedby={descriptionId}
       >
         <div className="connection-orbit" aria-hidden="true">
           <span className="connection-orbit-core" />
@@ -56,15 +77,21 @@ export default function ConnectionPrompt({
 
         <p className="connection-kicker">Incoming signal</p>
         <h2 id={titleId}>{title}</h2>
-        {subtitle && <p id={descriptionId} className="connection-copy">{subtitle}</p>}
+        {subtitle && (
+          <p id={descriptionId} className="connection-copy">
+            {subtitle}
+          </p>
+        )}
         {!subtitle && (
-          <p className="connection-copy">
+          <p id={descriptionId} className="connection-copy">
             No name, no profile. Just someone reaching out right now.
           </p>
         )}
 
         <div className="connection-actions">
           <button
+            ref={declineRef}
+            type="button"
             onClick={onDecline}
             className="connection-button connection-button-secondary"
           >
@@ -72,6 +99,7 @@ export default function ConnectionPrompt({
           </button>
           <button
             ref={acceptRef}
+            type="button"
             onClick={onAccept}
             className="connection-button connection-button-primary"
           >

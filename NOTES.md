@@ -37,7 +37,7 @@
 - phase 1 code work is done and lint/build passes. real two browser test still
   needs valid postgres and mapbox credentials before calling it fully verified
 
-## Phase 2 — Make it good
+## Phase 2 — Make it good (complete)
 
 - picked a Night Signal direction, dark and warm instead of neon tech style
   first pass adds the type, color system, entry screen and map framing
@@ -49,6 +49,9 @@
 - map feels more like the actual product now, it has a proper quiet state while
   nobody else is around, bigger signal targets, busy labels and controls to get
   back to your spot or see the full world
+- finished the small screen pass, entry and request screens changes shape in
+  landscape instead of just shrinking. inputs dont zoom the phone now and
+  dialog focus stays inside so keyboard use isnt forgotten
 
 ## Phase 3 — Make it secure
 

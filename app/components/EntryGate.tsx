@@ -97,15 +97,21 @@ export default function EntryGate({
           </dl>
 
           <button
+            type="button"
             onClick={enter}
             disabled={status === "locating"}
             className="entry-button"
+            aria-busy={status === "locating"}
+            aria-describedby="entry-privacy"
           >
             <span>
               {status === "locating" ? "Finding your signal" : "Enter the map"}
             </span>
-            <span className="entry-button-mark" aria-hidden="true">
-              {status === "locating" ? "•••" : "↗"}
+            <span
+              className={`entry-button-mark ${status === "locating" ? "is-loading" : ""}`}
+              aria-hidden="true"
+            >
+              {status === "locating" ? <i /> : "↗"}
             </span>
           </button>
 
@@ -115,7 +121,7 @@ export default function EntryGate({
             </p>
           )}
 
-          <p className="entry-privacy">
+          <p id="entry-privacy" className="entry-privacy">
             By entering you allow location access for this session. Closing the
             tab removes your dot and ends everything.
           </p>

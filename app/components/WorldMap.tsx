@@ -293,11 +293,22 @@ export default function WorldMap({
 
       {ready && (
         <nav className="map-controls" aria-label="Map view controls">
-          <button onClick={recenterOnMe} disabled={!me}>
+          <button
+            type="button"
+            onClick={recenterOnMe}
+            disabled={!me}
+            aria-label="Center map on my location"
+            title="Find me"
+          >
             <MapControlIcon kind="locate" />
             <span>Find me</span>
           </button>
-          <button onClick={showWholeWorld}>
+          <button
+            type="button"
+            onClick={showWholeWorld}
+            aria-label="Show the whole world"
+            title="World view"
+          >
             <MapControlIcon kind="world" />
             <span>World view</span>
           </button>

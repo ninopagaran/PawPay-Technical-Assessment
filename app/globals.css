@@ -40,6 +40,10 @@ input {
   font: inherit;
 }
 
+button {
+  -webkit-tap-highlight-color: rgba(255, 104, 66, 0.16);
+}
+
 button:focus-visible,
 input:focus-visible {
   outline: 2px solid var(--ember-soft);
@@ -342,6 +346,15 @@ input:focus-visible {
   border: 1px solid currentColor;
   border-radius: 50%;
   font-size: 17px;
+}
+
+.entry-button-mark.is-loading i {
+  width: 16px;
+  height: 16px;
+  border: 1px solid currentColor;
+  border-right-color: transparent;
+  border-radius: 50%;
+  animation: map-orbit 700ms linear infinite;
 }
 
 .entry-error {
@@ -1942,8 +1955,9 @@ input:focus-visible {
   }
 }
 
-@media (max-width: 820px) {
+@media (max-width: 1040px) {
   .entry-grid {
+    width: min(100%, 820px);
     grid-template-columns: 1fr;
     gap: 64px;
     align-items: start;
@@ -1989,6 +2003,7 @@ input:focus-visible {
 
   .entry-hero h1 {
     margin-top: 18px;
+    font-size: clamp(62px, 20vw, 92px);
     line-height: 0.84;
   }
 
@@ -2006,6 +2021,14 @@ input:focus-visible {
 
   .entry-panel h2 {
     margin-top: 24px;
+    font-size: clamp(38px, 12vw, 50px);
+  }
+
+  .entry-panel-copy,
+  .connection-copy,
+  .chat-empty p,
+  .chat-message p {
+    font-size: 14px;
   }
 
   .entry-button {
@@ -2025,6 +2048,7 @@ input:focus-visible {
 
   .entry-privacy {
     order: 4;
+    font-size: 11px;
   }
 
   .map-header {
@@ -2160,6 +2184,10 @@ input:focus-visible {
     padding: 12px 12px max(12px, env(safe-area-inset-bottom));
   }
 
+  .chat-composer input {
+    font-size: 16px;
+  }
+
   .video-header {
     padding: max(20px, env(safe-area-inset-top)) 18px 26px;
   }
@@ -2182,6 +2210,167 @@ input:focus-visible {
 
   .video-end {
     justify-self: center;
+  }
+}
+
+@media (max-height: 560px) and (min-width: 640px) {
+  .entry-header {
+    padding: 14px 28px;
+  }
+
+  .entry-footer {
+    display: none;
+  }
+
+  .entry-grid {
+    width: 100%;
+    grid-template-columns: minmax(0, 1fr) minmax(320px, 0.82fr);
+    gap: clamp(30px, 6vw, 76px);
+    align-items: center;
+    padding: 28px clamp(28px, 6vw, 72px);
+  }
+
+  .entry-hero {
+    padding-right: 0;
+  }
+
+  .entry-hero h1 {
+    margin-top: 14px;
+    font-size: clamp(62px, 10vw, 90px);
+    line-height: 0.79;
+  }
+
+  .entry-lede,
+  .signal-line,
+  .entry-facts,
+  .entry-privacy {
+    display: none;
+  }
+
+  .entry-panel {
+    padding: 20px 0 16px 28px;
+  }
+
+  .entry-panel h2 {
+    margin-top: 16px;
+    font-size: clamp(34px, 5vw, 48px);
+  }
+
+  .entry-panel-copy {
+    margin-top: 14px;
+    font-size: 12px;
+  }
+
+  .entry-button {
+    min-height: 50px;
+    margin-top: 18px;
+  }
+
+  .entry-button-mark {
+    width: 36px;
+    height: 36px;
+  }
+
+  .connection-backdrop {
+    align-items: center;
+    padding: 14px;
+  }
+
+  .connection-card {
+    display: grid;
+    width: min(100%, 700px);
+    grid-template-areas:
+      "orbit kicker"
+      "orbit title"
+      "orbit copy"
+      "actions actions"
+      "footnote footnote";
+    grid-template-columns: 150px 1fr;
+    align-items: center;
+    padding: 22px 28px 18px;
+    text-align: left;
+  }
+
+  .connection-orbit {
+    grid-area: orbit;
+    margin: 0 auto;
+  }
+
+  .connection-kicker {
+    grid-area: kicker;
+  }
+
+  .connection-card h2 {
+    grid-area: title;
+    max-width: none;
+    margin-top: 5px;
+    font-size: 38px;
+  }
+
+  .connection-copy {
+    grid-area: copy;
+    max-width: none;
+    margin-top: 8px;
+  }
+
+  .connection-actions {
+    grid-area: actions;
+    margin-top: 17px;
+  }
+
+  .connection-footnote {
+    grid-area: footnote;
+    margin-top: 11px;
+    text-align: center;
+  }
+
+  .chat-header {
+    min-height: 76px;
+    padding: 12px 16px;
+  }
+
+  .chat-avatar {
+    width: 38px;
+    height: 38px;
+  }
+
+  .chat-timeline {
+    padding-block: 12px;
+  }
+
+  .chat-session-marker {
+    margin-bottom: 12px;
+  }
+
+  .chat-empty {
+    min-height: calc(100% - 30px);
+    padding-block: 8px;
+  }
+
+  .chat-empty-mark {
+    height: 32px;
+    margin-bottom: 10px;
+  }
+
+  .chat-empty h3 {
+    font-size: 28px;
+  }
+
+  .chat-empty p {
+    margin-top: 7px;
+  }
+
+  .chat-composer-wrap {
+    padding-block: 9px;
+  }
+
+  .video-controls {
+    min-height: 76px;
+    padding-block: 10px;
+  }
+
+  .video-end {
+    min-height: 48px;
   }
 }
 
