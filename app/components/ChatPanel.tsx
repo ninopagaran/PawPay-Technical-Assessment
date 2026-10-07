@@ -1,6 +1,7 @@
 "use client";
 
 import { useEffect, useRef, useState } from "react";
+import { MAX_CHAT_MESSAGE_LENGTH } from "@/lib/types";
 
 export interface ChatMessage {
   id: number;
@@ -19,7 +20,7 @@ export default function ChatPanel({
   messages: ChatMessage[];
   connected: boolean;
   videoBusy: boolean;
-  onSend: (text: string) => void;
+  onSend: (text: string) => boolean;
   onStartVideo: () => void;
   onEnd: () => void;
 }) {
@@ -34,8 +35,7 @@ export default function ChatPanel({
     e.preventDefault();
     const text = draft.trim();
     if (!text || !connected) return;
-    onSend(text);
-    setDraft("");
+    if (onSend(text)) setDraft("");
   }
 
   return (
@@ -93,6 +93,7 @@ export default function ChatPanel({
         <input
           value={draft}
           onChange={(e) => setDraft(e.target.value)}
+          maxLength={MAX_CHAT_MESSAGE_LENGTH}
           placeholder={connected ? "Type a message…" : "Connecting…"}
           disabled={!connected}
           className="flex-1 rounded-full bg-zinc-900 px-4 py-2 text-sm outline-none placeholder:text-zinc-600 focus:ring-1 focus:ring-emerald-400 disabled:opacity-50"

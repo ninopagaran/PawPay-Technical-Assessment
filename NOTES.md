@@ -22,6 +22,10 @@
   on after it was cancelled. added request timeout and cancels pending media too
 - if polling stops long enough the presence row can be deleted, after polling
   comes back the user stays invisible. client now rejoins and shows offline state
+- chat channel can close but ui still says connected and failed messages still
+  shows as sent. channel close ends the chat now and unsent draft stays in input
+- chat messages is capped at 2000 chars on sender and receiver so one huge send
+  cant overload the data channel
 - started with small fixes while finding each broken flow. related changes like
   video lifecycle is grouped together once the whole behavior can be checked
 - lint and production build passes after the grouped fixes. real two browser test

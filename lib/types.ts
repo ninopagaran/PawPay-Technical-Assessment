@@ -1,5 +1,7 @@
 // Shared types across client + API.
 
+export const MAX_CHAT_MESSAGE_LENGTH = 2_000;
+
 // Signal mailbox message types.
 export type SignalType =
   | "request" // connection request (tap a dot)

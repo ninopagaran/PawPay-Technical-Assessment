@@ -112,6 +112,16 @@ export default function Home() {
         connectionTimer.current = null;
         setConn({ kind: "connected", peerId });
       },
+      onChannelClose: () => {
+        const c = connRef.current;
+        if (
+          (c.kind === "connecting" || c.kind === "connected") &&
+          c.peerId === peerId
+        ) {
+          void sendSignal(sessionId, peerId, "end");
+          teardown("Connection closed.");
+        }
+      },
     });
     peerRef.current = ps;
     connectionTimer.current = setTimeout(() => {
@@ -221,8 +231,11 @@ export default function Home() {
   function startVideoRequest() {
     const ps = peerRef.current;
     if (videoRef.current !== "none" || !ps) return;
+    if (!ps.sendControl("video-request")) {
+      showNotice("Couldn't send video request.");
+      return;
+    }
     setVideo("requesting");
-    ps.sendControl("video-request");
     videoRequestTimer.current = setTimeout(() => {
       if (peerRef.current === ps && videoRef.current === "requesting") {
         ps.sendControl("video-end");
@@ -242,7 +255,13 @@ export default function Home() {
           return;
         }
         setLocalStream(stream);
-        ps.sendControl("video-accept");
+        if (!ps.sendControl("video-accept")) {
+          ps.stopVideo();
+          setLocalStream(null);
+          setVideo("none");
+          showNotice("Video request ended.");
+          return;
+        }
         setVideo("active");
       })
       .catch(() => {
@@ -467,8 +486,12 @@ export default function Home() {
           connected={conn.kind === "connected"}
           videoBusy={video !== "none"}
           onSend={(text) => {
-            peerRef.current?.sendChat(text);
+            if (!peerRef.current?.sendChat(text)) {
+              showNotice("Message not sent.");
+              return false;
+            }
             addMessage(true, text);
+            return true;
           }}
           onStartVideo={startVideoRequest}
           onEnd={endConnection}

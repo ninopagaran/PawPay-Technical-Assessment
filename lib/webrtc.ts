@@ -1,3 +1,5 @@
+import { MAX_CHAT_MESSAGE_LENGTH } from "@/lib/types";
+
 export type DescType = "offer" | "answer" | "ice";
 export type PeerControl =
   | "video-request"
@@ -12,6 +14,7 @@ interface PeerCallbacks {
   onRemoteStream: (stream: MediaStream | null) => void;
   onConnectionState: (state: RTCPeerConnectionState) => void;
   onChannelOpen: () => void;
+  onChannelClose: () => void;
 }
 
 const ICE_CONFIG: RTCConfiguration = {
@@ -74,11 +77,23 @@ export class PeerSession {
   }
 
   private wireDataChannel(dc: RTCDataChannel) {
-    dc.onopen = () => this.cb.onChannelOpen();
+    dc.onopen = () => {
+      if (!this.closed) this.cb.onChannelOpen();
+    };
+    dc.onclose = () => {
+      if (!this.closed) this.cb.onChannelClose();
+    };
+    dc.onerror = () => {
+      if (!this.closed) this.cb.onChannelClose();
+    };
     dc.onmessage = (e) => {
       try {
         const msg = JSON.parse(e.data as string);
-        if (msg.t === "chat" && typeof msg.text === "string") {
+        if (
+          msg.t === "chat" &&
+          typeof msg.text === "string" &&
+          msg.text.length <= MAX_CHAT_MESSAGE_LENGTH
+        ) {
           this.cb.onChat(msg.text);
         } else if (msg.t === "ctrl" && typeof msg.ctrl === "string") {
           this.cb.onControl(msg.ctrl as PeerControl);
@@ -130,17 +145,22 @@ export class PeerSession {
     }
   }
 
-  sendChat(text: string) {
-    this.safeSend({ t: "chat", text });
+  sendChat(text: string): boolean {
+    if (!text || text.length > MAX_CHAT_MESSAGE_LENGTH) return false;
+    return this.safeSend({ t: "chat", text });
   }
 
-  sendControl(ctrl: PeerControl) {
-    this.safeSend({ t: "ctrl", ctrl });
+  sendControl(ctrl: PeerControl): boolean {
+    return this.safeSend({ t: "ctrl", ctrl });
   }
 
-  private safeSend(obj: unknown) {
-    if (this.dc && this.dc.readyState === "open") {
+  private safeSend(obj: unknown): boolean {
+    if (!this.dc || this.dc.readyState !== "open") return false;
+    try {
       this.dc.send(JSON.stringify(obj));
+      return true;
+    } catch {
+      return false;
     }
   }
 
