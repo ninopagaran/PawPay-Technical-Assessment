@@ -18,9 +18,10 @@
   leave now releases the known peer and puts a final `end` in their mailbox
 - after accept there was no timeout while WebRTC connects, both sides can stay
   on connecting forever. added 30 second timer then sends `end` and resets
-- Decision: kept the existing heartbeat and cleanup design, limiting this change
-  to the faulty update scope so subsequent reliability issues can be diagnosed
-  and committed independently.
+- video request can wait forever and late camera permission can turn video back
+  on after it was cancelled. added request timeout and cancels pending media too
+- started with small fixes while finding each broken flow. related changes like
+  video lifecycle is grouped together once the whole behavior can be checked
 - Testing: verified with lint and a production build. End-to-end two-user testing
   remains pending valid PostgreSQL and Mapbox credentials.
 

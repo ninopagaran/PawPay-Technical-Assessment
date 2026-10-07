@@ -25,6 +25,8 @@ export class PeerSession {
   private makingOffer = false;
   private ignoreOffer = false;
   private localStream: MediaStream | null = null;
+  private pendingLocalStream: Promise<MediaStream> | null = null;
+  private videoGeneration = 0;
   private closed = false;
   private readonly cb: PeerCallbacks;
   private pendingCandidates: RTCIceCandidateInit[] = [];
@@ -143,19 +145,38 @@ export class PeerSession {
   }
 
   async startVideo(): Promise<MediaStream> {
-    if (!this.localStream) {
-      this.localStream = await navigator.mediaDevices.getUserMedia({
+    if (this.localStream) return this.localStream;
+    if (this.pendingLocalStream) return this.pendingLocalStream;
+
+    const generation = this.videoGeneration;
+    const pending = navigator.mediaDevices
+      .getUserMedia({
         video: true,
         audio: true,
+      })
+      .then((stream) => {
+        if (this.closed || generation !== this.videoGeneration) {
+          for (const track of stream.getTracks()) track.stop();
+          throw new Error("video request was cancelled");
+        }
+        this.localStream = stream;
+        for (const track of stream.getTracks()) {
+          this.pc.addTrack(track, stream);
+        }
+        return stream;
+      })
+      .finally(() => {
+        if (this.pendingLocalStream === pending) {
+          this.pendingLocalStream = null;
+        }
       });
-      for (const track of this.localStream.getTracks()) {
-        this.pc.addTrack(track, this.localStream);
-      }
-    }
-    return this.localStream;
+
+    this.pendingLocalStream = pending;
+    return pending;
   }
 
   stopVideo() {
+    this.videoGeneration += 1;
     if (this.localStream) {
       for (const track of this.localStream.getTracks()) track.stop();
       for (const sender of this.pc.getSenders()) {

@@ -22,6 +22,7 @@ type VideoState = "none" | "requesting" | "incoming" | "active";
 
 const REQUEST_TIMEOUT_MS = 30_000;
 const CONNECTION_TIMEOUT_MS = 30_000;
+const VIDEO_REQUEST_TIMEOUT_MS = 30_000;
 
 export default function Home() {
   const [phase, setPhase] = useState<"gate" | "live">("gate");
@@ -53,6 +54,7 @@ export default function Home() {
   const msgId = useRef(0);
   const requestTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
   const connectionTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const videoRequestTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
 
   function showNotice(text: string) {
     setNotice(text);
@@ -63,9 +65,15 @@ export default function Home() {
     setMessages((prev) => [...prev, { id: msgId.current++, mine, text }]);
   }
 
+  function clearVideoRequestTimer() {
+    if (videoRequestTimer.current) clearTimeout(videoRequestTimer.current);
+    videoRequestTimer.current = null;
+  }
+
   function teardown(message?: string) {
     if (requestTimer.current) clearTimeout(requestTimer.current);
     if (connectionTimer.current) clearTimeout(connectionTimer.current);
+    clearVideoRequestTimer();
     requestTimer.current = null;
     connectionTimer.current = null;
     peerRef.current?.close();
@@ -116,12 +124,26 @@ export default function Home() {
         break;
       case "video-accept":
         if (videoRef.current === "requesting" && ps) {
+          clearVideoRequestTimer();
           ps.startVideo()
             .then((stream) => {
+              if (
+                peerRef.current !== ps ||
+                videoRef.current !== "requesting"
+              ) {
+                ps.stopVideo();
+                return;
+              }
               setLocalStream(stream);
               setVideo("active");
             })
             .catch(() => {
+              if (
+                peerRef.current !== ps ||
+                videoRef.current !== "requesting"
+              ) {
+                return;
+              }
               setVideo("none");
               ps.sendControl("video-end");
               showNotice("Camera unavailable.");
@@ -130,11 +152,13 @@ export default function Home() {
         break;
       case "video-decline":
         if (videoRef.current === "requesting") {
+          clearVideoRequestTimer();
           setVideo("none");
           showNotice("Video declined.");
         }
         break;
       case "video-end":
+        clearVideoRequestTimer();
         ps?.stopVideo();
         setLocalStream(null);
         setRemoteStream(null);
@@ -188,21 +212,34 @@ export default function Home() {
   }
 
   function startVideoRequest() {
-    if (videoRef.current !== "none" || !peerRef.current) return;
+    const ps = peerRef.current;
+    if (videoRef.current !== "none" || !ps) return;
     setVideo("requesting");
-    peerRef.current.sendControl("video-request");
+    ps.sendControl("video-request");
+    videoRequestTimer.current = setTimeout(() => {
+      if (peerRef.current === ps && videoRef.current === "requesting") {
+        ps.sendControl("video-end");
+        setVideo("none");
+        showNotice("No answer for video.");
+      }
+    }, VIDEO_REQUEST_TIMEOUT_MS);
   }
 
   function acceptVideo() {
     const ps = peerRef.current;
-    if (!ps) return;
+    if (!ps || videoRef.current !== "incoming") return;
     ps.startVideo()
       .then((stream) => {
+        if (peerRef.current !== ps || videoRef.current !== "incoming") {
+          ps.stopVideo();
+          return;
+        }
         setLocalStream(stream);
         ps.sendControl("video-accept");
         setVideo("active");
       })
       .catch(() => {
+        if (peerRef.current !== ps || videoRef.current !== "incoming") return;
         ps.sendControl("video-decline");
         setVideo("none");
         showNotice("Camera unavailable.");
@@ -210,7 +247,10 @@ export default function Home() {
   }
 
   function declineVideo() {
-    peerRef.current?.sendControl("video-decline");
+    const ps = peerRef.current;
+    ps?.stopVideo();
+    ps?.sendControl("video-decline");
+    clearVideoRequestTimer();
     setVideo("none");
   }
 
@@ -218,6 +258,7 @@ export default function Home() {
     const ps = peerRef.current;
     ps?.stopVideo();
     ps?.sendControl("video-end");
+    clearVideoRequestTimer();
     setLocalStream(null);
     setRemoteStream(null);
     setVideo("none");
