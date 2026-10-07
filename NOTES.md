@@ -1,6 +1,6 @@
 # Pulse Assessment Notes
 
-## Phase 1 — Make it run (code complete, live test pending)
+## Phase 1 — Make it run (complete)
 
 - `/api/poll` was updating `lastSeen` for every user when only one user polls
   so old dots never goes away. changed it to update only the current user
@@ -34,8 +34,8 @@
   in background. they now end the broken flow and shows a useful error
 - started with small fixes while finding each broken flow. related changes like
   video lifecycle is grouped together once the whole behavior can be checked
-- phase 1 code work is done and lint/build passes. real two browser test still
-  needs valid postgres and mapbox credentials before calling it fully verified
+- phase 1 got a real two browser test after credentials was added. both browsers
+  found each other, connected, sent p2p chat and started then ended video
 
 ## Phase 2 — Make it good (complete)
 
@@ -61,8 +61,11 @@
 - all join, poll, signal and leave calls checks that token now. adding the column
   clears old presence rows on deploy which is ok here since those rows is meant
   to disappear anyway
-- still high and next to fix: a real session can send signals in the wrong order
-  or at unrelated users. request limits and stricter input checks is open too
+- next high issue was a real session could send signals in the wrong order or at
+  unrelated users. postgres owns the pending/connected pair now and changes the
+  state plus mailbox together so even two requests at once cant half claim them
+- leave doesnt trust a peer id from the browser anymore either, it only releases
+  whoever the server already paired. request limits and stricter inputs is open
 
 ## Phase 4 — Make it better
 

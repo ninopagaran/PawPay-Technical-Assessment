@@ -43,9 +43,41 @@ export async function GET(request: NextRequest) {
     return Response.json({ error: "presence expired" }, { status: 410 });
   }
 
-  // 2) Reap stale presence rows and orphaned signals (independent deletes —
-  // no atomicity needed, and avoids transactions over a PgBouncer pooler).
+  // 2) Reap stale presence rows, release their server-recorded peers, and
+  // deliver an end signal so an active counterpart resets immediately.
+  const stalePresences = await prisma.presence.findMany({
+    where: { lastSeen: { lt: staleCutoff } },
+    select: { id: true, peerId: true },
+  });
+  const staleIds = new Set(stalePresences.map((presence) => presence.id));
+  const interruptedPairs = stalePresences.filter(
+    (presence) => presence.peerId && !staleIds.has(presence.peerId),
+  );
+  const releasedPairs: typeof interruptedPairs = [];
+
+  for (const stale of interruptedPairs) {
+    const released = await prisma.presence.updateMany({
+      where: { id: stale.peerId!, peerId: stale.id },
+      data: {
+        busy: false,
+        peerId: null,
+        connectionState: null,
+        isInitiator: false,
+      },
+    });
+    if (released.count > 0) releasedPairs.push(stale);
+  }
   await prisma.presence.deleteMany({ where: { lastSeen: { lt: staleCutoff } } });
+  if (releasedPairs.length > 0) {
+    await prisma.signal.createMany({
+      data: releasedPairs.map((stale) => ({
+        fromId: stale.id,
+        toId: stale.peerId!,
+        type: "end",
+        payload: null,
+      })),
+    });
+  }
   await prisma.signal.deleteMany({ where: { createdAt: { lt: signalCutoff } } });
 
   // 3) Online peers, excluding self.

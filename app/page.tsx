@@ -466,12 +466,7 @@ export default function Home() {
   useEffect(() => {
     if (!sessionId || phase !== "live") return;
     const onLeave = () => {
-      const c = connRef.current;
-      leave(
-        sessionId,
-        sessionToken,
-        c.kind === "idle" ? undefined : c.peerId,
-      );
+      leave(sessionId, sessionToken);
     };
     window.addEventListener("pagehide", onLeave);
     window.addEventListener("beforeunload", onLeave);

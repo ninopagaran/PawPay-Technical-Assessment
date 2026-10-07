@@ -1,6 +1,13 @@
 import type { NextRequest } from "next/server";
 import { prisma } from "@/lib/prisma";
 import { sessionTokenMatches } from "@/lib/session-auth";
+import {
+  acceptConnectionRequest,
+  createConnectionRequest,
+  declineConnectionRequest,
+  endConnection,
+  relayConnectedSignal,
+} from "@/lib/signal-state";
 import type { SignalType } from "@/lib/types";
 
 export const runtime = "nodejs";
@@ -34,13 +41,17 @@ export async function POST(request: NextRequest) {
     unknown
   >;
 
-  if (typeof fromId !== "string" || typeof toId !== "string") {
+  if (
+    typeof fromId !== "string" ||
+    typeof toId !== "string" ||
+    fromId === toId
+  ) {
     return Response.json({ error: "invalid ids" }, { status: 400 });
   }
 
   const sender = await prisma.presence.findUnique({
     where: { id: fromId },
-    select: { sessionHash: true },
+    select: { sessionHash: true, busy: true, peerId: true },
   });
   if (!sender) {
     return Response.json({ error: "presence expired" }, { status: 410 });
@@ -62,42 +73,46 @@ export async function POST(request: NextRequest) {
   const signalType = type as SignalType;
   const payloadStr = typeof payload === "string" ? payload : null;
 
-  // Enforce "one active connection at a time": if the target is already busy,
-  // auto-decline the request instead of delivering it.
   if (signalType === "request") {
-    const target = await prisma.presence.findUnique({
-      where: { id: toId },
-      select: { busy: true },
-    });
-    if (!target) {
-      // Target went offline — tell the initiator it was declined.
+    if (sender.busy || sender.peerId) {
+      return Response.json({ error: "sender unavailable" }, { status: 409 });
+    }
+    if (!(await createConnectionRequest(fromId, toId))) {
       await sendDecline(toId, fromId);
       return Response.json({ ok: true, autoDeclined: true });
     }
-    if (target.busy) {
-      await sendDecline(toId, fromId);
-      return Response.json({ ok: true, autoDeclined: true });
-    }
+    return Response.json({ ok: true });
   }
 
-  // Busy transitions:
-  // - accept: the connection is now active → mark BOTH peers busy.
-  // - decline/end: free both peers.
-  if (signalType === "accept") {
-    await prisma.presence.updateMany({
-      where: { id: { in: [fromId, toId] } },
-      data: { busy: true },
-    });
-  } else if (signalType === "decline" || signalType === "end") {
-    await prisma.presence.updateMany({
-      where: { id: { in: [fromId, toId] } },
-      data: { busy: false },
-    });
+  let delivered = false;
+  switch (signalType) {
+    case "accept":
+      delivered = await acceptConnectionRequest(fromId, toId);
+      break;
+    case "decline":
+      delivered = await declineConnectionRequest(fromId, toId);
+      break;
+    case "end":
+      delivered = await endConnection(fromId, toId);
+      break;
+    case "offer":
+    case "answer":
+    case "ice":
+      delivered = await relayConnectedSignal(
+        fromId,
+        toId,
+        signalType,
+        payloadStr,
+      );
+      break;
   }
 
-  await prisma.signal.create({
-    data: { fromId, toId, type: signalType, payload: payloadStr },
-  });
+  if (!delivered) {
+    return Response.json(
+      { error: "signal not allowed in current connection state" },
+      { status: 409 },
+    );
+  }
 
   return Response.json({ ok: true });
 }
