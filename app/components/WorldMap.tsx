@@ -20,6 +20,24 @@ function dotColor(id: string): string {
   return SIGNAL_COLORS[Math.abs(hash) % SIGNAL_COLORS.length];
 }
 
+function MapControlIcon({ kind }: { kind: "locate" | "world" }) {
+  if (kind === "locate") {
+    return (
+      <svg viewBox="0 0 24 24" aria-hidden="true">
+        <circle cx="12" cy="12" r="4" />
+        <path d="M12 2v3M12 19v3M2 12h3M19 12h3" />
+      </svg>
+    );
+  }
+
+  return (
+    <svg viewBox="0 0 24 24" aria-hidden="true">
+      <circle cx="12" cy="12" r="9" />
+      <path d="M3.5 9h17M3.5 15h17M12 3c2.1 2.45 3.15 5.45 3.15 9S14.1 18.55 12 21M12 3C9.9 5.45 8.85 8.45 8.85 12S9.9 18.55 12 21" />
+    </svg>
+  );
+}
+
 export default function WorldMap({
   peers,
   me,
@@ -63,6 +81,7 @@ export default function WorldMap({
         const map = new mapboxgl.Map({
           container: containerRef.current,
           style: "mapbox://styles/mapbox/dark-v11",
+          projection: "globe",
           // Open centered on the user if we know where they are, else world view.
           center: me ? [me.lng, me.lat] : [0, 20],
           zoom: me ? 4 : 1.4,
@@ -71,6 +90,13 @@ export default function WorldMap({
         map.on("load", () => {
           loaded = true;
           if (!cancelled) {
+            map.setFog({
+              color: "#090806",
+              "high-color": "#17110d",
+              "horizon-blend": 0.08,
+              "space-color": "#050403",
+              "star-intensity": 0.08,
+            });
             setMapError(false);
             setReady(true);
           }
@@ -111,6 +137,7 @@ export default function WorldMap({
         const el = document.createElement("div");
         el.className = "pulse-me";
         el.title = "You are here";
+        el.setAttribute("aria-label", "Your approximate location");
         el.innerHTML = `<span class="pulse-me-label">You</span><span class="pulse-me-core"></span>`;
         // anchor "bottom" → the pin's tip sits on the exact coordinate.
         meMarkerRef.current = new mapboxgl.Marker({ element: el, anchor: "bottom" })
@@ -143,10 +170,14 @@ export default function WorldMap({
         let marker = markers.get(peer.id);
         if (!marker) {
           const el = document.createElement("button");
+          const core = document.createElement("span");
+          const label = document.createElement("span");
           el.type = "button";
           el.className = "pulse-dot";
-          el.style.background = dotColor(peer.id);
-          el.title = "Tap to connect";
+          el.style.setProperty("--signal-color", dotColor(peer.id));
+          core.className = "pulse-dot-core";
+          label.className = "pulse-dot-label";
+          el.append(core, label);
           el.addEventListener("click", (e) => {
             e.stopPropagation();
             if (canConnectRef.current) onPeerClickRef.current(peer.id);
@@ -158,9 +189,29 @@ export default function WorldMap({
         }
         marker.setLngLat([peer.lng, peer.lat]);
         const element = marker.getElement() as HTMLButtonElement;
-        element.disabled = peer.busy;
-        element.title = peer.busy ? "Already connected" : "Tap to connect";
-        element.style.opacity = peer.busy ? "0.35" : "1";
+        element.disabled = peer.busy || !canConnect;
+        element.title = peer.busy
+          ? "Already connected"
+          : canConnect
+            ? "Tap to connect"
+            : "Finish your current signal first";
+        element.setAttribute(
+          "aria-label",
+          peer.busy
+            ? "Signal already in a conversation"
+            : canConnect
+              ? "Connect to this signal"
+              : "Signal unavailable while you are connecting",
+        );
+        element.classList.toggle("is-busy", peer.busy);
+        const label = element.querySelector<HTMLElement>(".pulse-dot-label");
+        if (label) {
+          label.textContent = peer.busy
+            ? "In conversation"
+            : canConnect
+              ? "Open signal"
+              : "Signal paused";
+        }
       }
 
       // Drop markers for peers that went offline / got filtered out.
@@ -175,7 +226,26 @@ export default function WorldMap({
     return () => {
       cancelled = true;
     };
-  }, [peers, ready]);
+  }, [peers, ready, canConnect]);
+
+  function recenterOnMe() {
+    if (!mapRef.current || !me) return;
+    mapRef.current.easeTo({
+      center: [me.lng, me.lat],
+      zoom: 4,
+      duration: 900,
+    });
+  }
+
+  function showWholeWorld() {
+    mapRef.current?.easeTo({
+      center: [0, 20],
+      zoom: 1.4,
+      duration: 1100,
+    });
+  }
+
+  const onlineCount = peers.length + (me ? 1 : 0);
 
   return (
     <div className="map-shell absolute inset-0">
@@ -187,34 +257,81 @@ export default function WorldMap({
           <span className="wordmark-signal" aria-hidden="true" />
           <span>Pulse</span>
         </div>
-        <p>Anonymous signals / live now</p>
+        <div className="map-header-status">
+          <span aria-hidden="true" />
+          <p>Scanning the night / live now</p>
+        </div>
       </header>
 
       {!HAS_MAPBOX_TOKEN && (
-        <div className="absolute inset-0 flex items-center justify-center p-6 text-center">
-          <p className="max-w-md rounded-lg bg-zinc-800 p-4 text-sm text-zinc-200">
-            Set{" "}
-            <code className="text-emerald-400">NEXT_PUBLIC_MAPBOX_TOKEN</code> in{" "}
-            <code>.env</code> to load the map.
+        <div className="map-system-state" role="alert">
+          <p className="map-system-kicker">Map unavailable</p>
+          <h2>Your Mapbox token is missing.</h2>
+          <p>
+            Add <code>NEXT_PUBLIC_MAPBOX_TOKEN</code> to <code>.env</code>, then
+            restart the app.
           </p>
         </div>
       )}
 
       {HAS_MAPBOX_TOKEN && mapError && (
-        <div className="absolute inset-0 flex items-center justify-center p-6 text-center">
-          <p className="max-w-md rounded-lg bg-zinc-800 p-4 text-sm text-zinc-200">
-            Couldn&rsquo;t load the map. Check the Mapbox token and your network,
-            then refresh.
-          </p>
+        <div className="map-system-state" role="alert">
+          <p className="map-system-kicker">Signal interrupted</p>
+          <h2>Couldn&rsquo;t reach the map.</h2>
+          <p>Check the Mapbox token and your network, then refresh the page.</p>
         </div>
       )}
 
-      {/* Online count */}
+      {HAS_MAPBOX_TOKEN && !ready && !mapError && (
+        <div className="map-loading" role="status">
+          <div className="map-loading-orbit" aria-hidden="true">
+            <span />
+          </div>
+          <p>Finding your place in the night</p>
+        </div>
+      )}
+
+      {ready && (
+        <nav className="map-controls" aria-label="Map view controls">
+          <button onClick={recenterOnMe} disabled={!me}>
+            <MapControlIcon kind="locate" />
+            <span>Find me</span>
+          </button>
+          <button onClick={showWholeWorld}>
+            <MapControlIcon kind="world" />
+            <span>World view</span>
+          </button>
+        </nav>
+      )}
+
+      {ready && peers.length === 0 && (
+        <section className="map-empty" aria-live="polite">
+          <div className="map-empty-frequency" aria-hidden="true">
+            <i />
+            <i />
+            <i />
+          </div>
+          <p className="map-system-kicker">Listening worldwide</p>
+          <h2>You&rsquo;re the first signal here.</h2>
+          <p>
+            Keep this tab open. New people appear the moment they enter Pulse.
+          </p>
+        </section>
+      )}
+
+      {ready && peers.length > 0 && (
+        <div className="map-legend" aria-label="Map legend">
+          <span><i className="is-you" />You</span>
+          <span><i className="is-open" />Open signal</span>
+          <span><i className="is-busy" />In conversation</span>
+        </div>
+      )}
+
       <div className="map-presence">
         <span className="map-presence-dot" aria-hidden="true" />
         <div>
-          <strong>{peers.length + (me ? 1 : 0)}</strong>
-          <span>signals online</span>
+          <strong>{onlineCount}</strong>
+          <span>{onlineCount === 1 ? "signal online" : "signals online"}</span>
         </div>
       </div>
 

@@ -46,6 +46,9 @@
 - carried the same look into incoming requests, chat and video instead of them
   feeling like default widgets. mobile chat is full screen and the waiting,
   empty and privacy states is clearer now too
+- map feels more like the actual product now, it has a proper quiet state while
+  nobody else is around, bigger signal targets, busy labels and controls to get
+  back to your spot or see the full world
 
 ## Phase 3 — Make it secure
 
