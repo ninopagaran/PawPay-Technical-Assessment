@@ -71,6 +71,12 @@
 - request limits is stored in postgres so it works across vercel instances. the
   key uses a sha256 of the ip instead of keeping the raw address, with enough
   room for normal polling and ice bursts
+- npm audit found the installed next version had a critical advisory, so next
+  moved to 16.4 and prisma packages to 7.10. the critical/runtime next findings
+  is gone after the update
+- audit still reports issues inside prisma and eslint build tools. they arent in
+  the apps request path and the offered fix downgrades prisma a full major, so i
+  left that forced fix out instead of trading it for a risky downgrade
 
 ## Phase 4 — Make it better
 
