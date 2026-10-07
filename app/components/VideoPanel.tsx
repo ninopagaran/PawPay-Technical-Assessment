@@ -27,37 +27,73 @@ export default function VideoPanel({
   }, [remoteStream]);
 
   return (
-    <div className="absolute inset-0 z-30 flex flex-col bg-black">
-      <div className="relative flex-1">
-        {/* Remote (full screen) */}
+    <section className="video-stage" aria-label="Video call">
+      <header className="video-header">
+        <div className="wordmark wordmark-video">
+          <span className="wordmark-signal" aria-hidden="true" />
+          <span>Pulse</span>
+        </div>
+        <div className="video-live-state">
+          <span aria-hidden="true" />
+          Live with a stranger
+        </div>
+      </header>
+
+      <div className="video-canvas">
         <video
           ref={remoteRef}
           autoPlay
           playsInline
-          className="h-full w-full bg-zinc-900 object-cover"
+          className="video-remote"
+          aria-label="Stranger's video"
         />
         {!remoteStream && (
-          <div className="absolute inset-0 flex items-center justify-center text-zinc-500">
-            Waiting for stranger&rsquo;s video…
+          <div className="video-waiting" role="status">
+            <div className="video-waiting-signal" aria-hidden="true">
+              <span />
+              <span />
+              <span />
+            </div>
+            <p>Waiting for their camera</p>
+            <span>The conversation is still connected</span>
           </div>
         )}
-        {/* Local (picture-in-picture) */}
-        <video
-          ref={localRef}
-          autoPlay
-          playsInline
-          muted
-          className="absolute bottom-4 right-4 h-40 w-28 rounded-lg border border-zinc-700 bg-zinc-800 object-cover"
-        />
+
+        <div className="video-local-frame">
+          <span className="video-local-label">You</span>
+          <video
+            ref={localRef}
+            autoPlay
+            playsInline
+            muted
+            className="video-local"
+            aria-label="Your video"
+          />
+        </div>
       </div>
-      <div className="flex justify-center bg-zinc-950 p-4">
+
+      <footer className="video-controls">
+        <div className="video-control-note">
+          <span>Encrypted peer connection</span>
+          <small>Video never touches our server</small>
+        </div>
         <button
           onClick={onEnd}
-          className="rounded-full bg-red-500 px-8 py-3 font-semibold text-white hover:bg-red-400"
+          className="video-end"
         >
+          <span className="video-end-icon" aria-hidden="true">
+            <svg viewBox="0 0 24 24">
+              <path d="M6.6 14.9c3.55-2.15 7.25-2.15 10.8 0l1.6-2.8c-4.6-2.8-9.4-2.8-14 0z" />
+              <path d="M7 14.8v3M17 14.8v3" />
+            </svg>
+          </span>
           End video
         </button>
-      </div>
-    </div>
+        <div className="video-control-note video-control-note-right">
+          <span>Anonymous session</span>
+          <small>Closing it leaves no history</small>
+        </div>
+      </footer>
+    </section>
   );
 }

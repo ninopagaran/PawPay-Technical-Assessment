@@ -491,15 +491,24 @@ export default function Home() {
       />
 
       {notice && (
-        <div className="signal-toast absolute left-1/2 top-20 z-30 -translate-x-1/2">
+        <div
+          className="signal-toast signal-toast-notice"
+          role="status"
+          aria-live="polite"
+        >
           {notice}
         </div>
       )}
 
       {conn.kind === "requesting" && (
-        <div className="signal-toast absolute left-1/2 top-20 z-30 flex -translate-x-1/2 items-center gap-4">
-          <span className="signal-toast-live" aria-hidden="true" />
-          <span>Sending your signal…</span>
+        <div className="signal-toast signal-toast-request" role="status">
+          <span className="signal-toast-radar" aria-hidden="true">
+            <span />
+          </span>
+          <div>
+            <strong>Signal sent</strong>
+            <span>Waiting for an answer…</span>
+          </div>
           <button
             onClick={cancelRequest}
             className="signal-toast-action"
@@ -538,8 +547,9 @@ export default function Home() {
       )}
 
       {video === "requesting" && (
-        <div className="signal-toast absolute bottom-24 left-1/2 z-30 -translate-x-1/2">
-          Waiting for stranger to accept video…
+        <div className="signal-toast signal-toast-video" role="status">
+          <span className="signal-toast-live" aria-hidden="true" />
+          <span>Waiting for video permission…</span>
         </div>
       )}
 

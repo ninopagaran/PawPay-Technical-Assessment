@@ -43,6 +43,9 @@
   first pass adds the type, color system, entry screen and map framing
 - kept the map as main focus and used ember colors for people so it still feels
   alive but not like a dating app or game
+- carried the same look into incoming requests, chat and video instead of them
+  feeling like default widgets. mobile chat is full screen and the waiting,
+  empty and privacy states is clearer now too
 
 ## Phase 3 — Make it secure
 
