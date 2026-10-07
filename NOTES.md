@@ -36,6 +36,9 @@
   video lifecycle is grouped together once the whole behavior can be checked
 - phase 1 got a real two browser test after credentials was added. both browsers
   found each other, connected, sent p2p chat and started then ended video
+- later testing found a stale dot can get paired right while another poll was
+  deleting it, leaving the live person busy alone. cleanup is one postgres move
+  now and new requests also checks both people is still fresh before reserving
 
 ## Phase 2 — Make it good (complete)
 
