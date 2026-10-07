@@ -5,7 +5,10 @@ import "mapbox-gl/dist/mapbox-gl.css";
 import type { Map as MapboxMap, Marker } from "mapbox-gl";
 import type { PeerDot } from "@/lib/types";
 
-const TOKEN = process.env.NEXT_PUBLIC_MAPBOX_TOKEN ?? "pk.eyJ1IjoicHVsc2UtbWFwIiwiYSI6ImNrMDBkZW1vMDAwMDAwMDAifQ.AAAAAAAAAAAAAAAAAAAAAA";
+const TOKEN = process.env.NEXT_PUBLIC_MAPBOX_TOKEN?.trim();
+const HAS_MAPBOX_TOKEN = Boolean(
+  TOKEN?.startsWith("pk.") && TOKEN !== "pk.your_mapbox_token_here",
+);
 
 function dotColor(id: string): string {
   let hash = 0;
@@ -31,6 +34,7 @@ export default function WorldMap({
   const markersRef = useRef<Map<string, Marker>>(new Map());
   const meMarkerRef = useRef<Marker | null>(null);
   const [ready, setReady] = useState(false);
+  const [mapError, setMapError] = useState(false);
 
   // Marker click handlers are bound once, so read the live click handler +
   // connectability through refs (synced in an effect, never during render).
@@ -43,26 +47,39 @@ export default function WorldMap({
 
   // Initialise the map once.
   useEffect(() => {
-    if (!TOKEN || !containerRef.current) return;
+    if (!HAS_MAPBOX_TOKEN || !TOKEN || !containerRef.current) return;
+    const accessToken = TOKEN;
     let cancelled = false;
+    let loaded = false;
     const markers = markersRef.current;
 
     (async () => {
-      const mapboxgl = (await import("mapbox-gl")).default;
-      if (cancelled || !containerRef.current) return;
-      mapboxgl.accessToken = TOKEN;
-      const map = new mapboxgl.Map({
-        container: containerRef.current,
-        style: "mapbox://styles/mapbox/dark-v11",
-        // Open centered on the user if we know where they are, else world view.
-        center: me ? [me.lng, me.lat] : [0, 20],
-        zoom: me ? 4 : 1.4,
-        attributionControl: true,
-      });
-      map.on("load", () => {
-        if (!cancelled) setReady(true);
-      });
-      mapRef.current = map;
+      try {
+        const mapboxgl = (await import("mapbox-gl")).default;
+        if (cancelled || !containerRef.current) return;
+        mapboxgl.accessToken = accessToken;
+        const map = new mapboxgl.Map({
+          container: containerRef.current,
+          style: "mapbox://styles/mapbox/dark-v11",
+          // Open centered on the user if we know where they are, else world view.
+          center: me ? [me.lng, me.lat] : [0, 20],
+          zoom: me ? 4 : 1.4,
+          attributionControl: true,
+        });
+        map.on("load", () => {
+          loaded = true;
+          if (!cancelled) {
+            setMapError(false);
+            setReady(true);
+          }
+        });
+        map.on("error", () => {
+          if (!cancelled && !loaded) setMapError(true);
+        });
+        mapRef.current = map;
+      } catch {
+        if (!cancelled) setMapError(true);
+      }
     })();
 
     return () => {
@@ -124,6 +141,7 @@ export default function WorldMap({
         let marker = markers.get(peer.id);
         if (!marker) {
           const el = document.createElement("button");
+          el.type = "button";
           el.className = "pulse-dot";
           el.style.background = dotColor(peer.id);
           el.title = "Tap to connect";
@@ -136,7 +154,11 @@ export default function WorldMap({
             .addTo(map);
           markers.set(peer.id, marker);
         }
-        marker.getElement().style.opacity = peer.busy ? "0.35" : "1";
+        marker.setLngLat([peer.lng, peer.lat]);
+        const element = marker.getElement() as HTMLButtonElement;
+        element.disabled = peer.busy;
+        element.title = peer.busy ? "Already connected" : "Tap to connect";
+        element.style.opacity = peer.busy ? "0.35" : "1";
       }
 
       // Drop markers for peers that went offline / got filtered out.
@@ -157,7 +179,7 @@ export default function WorldMap({
     <div className="absolute inset-0">
       <div ref={containerRef} className="h-full w-full bg-zinc-900" />
 
-      {!TOKEN && (
+      {!HAS_MAPBOX_TOKEN && (
         <div className="absolute inset-0 flex items-center justify-center p-6 text-center">
           <p className="max-w-md rounded-lg bg-zinc-800 p-4 text-sm text-zinc-200">
             Set{" "}
@@ -167,9 +189,18 @@ export default function WorldMap({
         </div>
       )}
 
+      {HAS_MAPBOX_TOKEN && mapError && (
+        <div className="absolute inset-0 flex items-center justify-center p-6 text-center">
+          <p className="max-w-md rounded-lg bg-zinc-800 p-4 text-sm text-zinc-200">
+            Couldn&rsquo;t load the map. Check the Mapbox token and your network,
+            then refresh.
+          </p>
+        </div>
+      )}
+
       {/* Online count */}
       <div className="absolute bottom-4 left-4 rounded-full bg-zinc-900/80 px-3 py-1.5 text-xs text-zinc-300 backdrop-blur">
-        {peers.length} online
+        {peers.length + (me ? 1 : 0)} online
       </div>
     </div>
   );

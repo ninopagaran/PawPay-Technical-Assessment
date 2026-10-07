@@ -26,6 +26,10 @@
   shows as sent. channel close ends the chat now and unsent draft stays in input
 - chat messages is capped at 2000 chars on sender and receiver so one huge send
   cant overload the data channel
+- fake map token was always used when env is missing so config warning never
+  shows and map just stays blank. token and map load errors has a clear state now
+- busy dots is disabled, marker positions refresh and online count includes me
+  so map doesnt show clickable or wrong state
 - started with small fixes while finding each broken flow. related changes like
   video lifecycle is grouped together once the whole behavior can be checked
 - lint and production build passes after the grouped fixes. real two browser test
