@@ -10,12 +10,14 @@ const HAS_MAPBOX_TOKEN = Boolean(
   TOKEN?.startsWith("pk.") && TOKEN !== "pk.your_mapbox_token_here",
 );
 
+const SIGNAL_COLORS = ["#ff6b45", "#f3b95f", "#d8788f", "#9cad72", "#62a89b"];
+
 function dotColor(id: string): string {
   let hash = 0;
   for (let i = 0; i < id.length; i++) {
     hash = (hash * 31 + id.charCodeAt(i)) | 0;
   }
-  return `hsl(${Math.abs(hash) % 360}, 70%, 60%)`;
+  return SIGNAL_COLORS[Math.abs(hash) % SIGNAL_COLORS.length];
 }
 
 export default function WorldMap({
@@ -109,7 +111,7 @@ export default function WorldMap({
         const el = document.createElement("div");
         el.className = "pulse-me";
         el.title = "You are here";
-        el.innerHTML = `<span class="pulse-me-label">Me</span>📍`;
+        el.innerHTML = `<span class="pulse-me-label">You</span><span class="pulse-me-core"></span>`;
         // anchor "bottom" → the pin's tip sits on the exact coordinate.
         meMarkerRef.current = new mapboxgl.Marker({ element: el, anchor: "bottom" })
           .setLngLat([me.lng, me.lat])
@@ -176,8 +178,17 @@ export default function WorldMap({
   }, [peers, ready]);
 
   return (
-    <div className="absolute inset-0">
-      <div ref={containerRef} className="h-full w-full bg-zinc-900" />
+    <div className="map-shell absolute inset-0">
+      <div ref={containerRef} className="pulse-map h-full w-full" />
+      <div className="map-vignette" aria-hidden="true" />
+
+      <header className="map-header">
+        <div className="wordmark wordmark-map">
+          <span className="wordmark-signal" aria-hidden="true" />
+          <span>Pulse</span>
+        </div>
+        <p>Anonymous signals / live now</p>
+      </header>
 
       {!HAS_MAPBOX_TOKEN && (
         <div className="absolute inset-0 flex items-center justify-center p-6 text-center">
@@ -199,8 +210,18 @@ export default function WorldMap({
       )}
 
       {/* Online count */}
-      <div className="absolute bottom-4 left-4 rounded-full bg-zinc-900/80 px-3 py-1.5 text-xs text-zinc-300 backdrop-blur">
-        {peers.length + (me ? 1 : 0)} online
+      <div className="map-presence">
+        <span className="map-presence-dot" aria-hidden="true" />
+        <div>
+          <strong>{peers.length + (me ? 1 : 0)}</strong>
+          <span>signals online</span>
+        </div>
+      </div>
+
+      <div className="map-hint">
+        <span>Explore the night</span>
+        <span className="map-hint-line" aria-hidden="true" />
+        <span>Tap a signal to connect</span>
       </div>
     </div>
   );

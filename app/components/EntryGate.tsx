@@ -41,30 +41,91 @@ export default function EntryGate({
   }
 
   return (
-    <div className="flex min-h-full flex-1 flex-col items-center justify-center gap-8 bg-zinc-950 p-6 text-zinc-100">
-      <div className="text-center">
-        <h1 className="text-4xl font-bold tracking-tight">Pulse</h1>
-        <p className="mt-2 max-w-sm text-zinc-400">
-          A living globe of anonymous strangers. Drop onto the map and connect.
-        </p>
+    <main className="entry-shell">
+      <div className="entry-noise" aria-hidden="true" />
+      <div className="entry-horizon" aria-hidden="true" />
+
+      <header className="entry-header">
+        <div className="wordmark">
+          <span className="wordmark-signal" aria-hidden="true" />
+          <span>Pulse</span>
+        </div>
+        <div className="entry-status">
+          <span className="entry-status-dot" aria-hidden="true" />
+          live worldwide
+        </div>
+      </header>
+
+      <div className="entry-grid">
+        <section className="entry-hero">
+          <p className="eyebrow">Anonymous / ephemeral / peer to peer</p>
+          <h1>
+            The world
+            <br />
+            is <em>awake.</em>
+          </h1>
+          <p className="entry-lede">
+            Somewhere, someone else is looking at the same night. Find a signal
+            and say hello.
+          </p>
+          <div className="signal-line" aria-hidden="true">
+            <span />
+          </div>
+        </section>
+
+        <section className="entry-panel" aria-labelledby="enter-title">
+          <div className="entry-step">01 / ARRIVAL</div>
+          <h2 id="enter-title">Enter without leaving a trace.</h2>
+          <p className="entry-panel-copy">
+            We use your location once to place an anonymous dot nearby, never on
+            your exact position.
+          </p>
+
+          <dl className="entry-facts">
+            <div>
+              <dt>Identity</dt>
+              <dd>None required</dd>
+            </div>
+            <div>
+              <dt>Messages</dt>
+              <dd>Peer to peer</dd>
+            </div>
+            <div>
+              <dt>History</dt>
+              <dd>Never stored</dd>
+            </div>
+          </dl>
+
+          <button
+            onClick={enter}
+            disabled={status === "locating"}
+            className="entry-button"
+          >
+            <span>
+              {status === "locating" ? "Finding your signal" : "Enter the map"}
+            </span>
+            <span className="entry-button-mark" aria-hidden="true">
+              {status === "locating" ? "•••" : "↗"}
+            </span>
+          </button>
+
+          {status === "error" && (
+            <p className="entry-error" role="alert">
+              {error}
+            </p>
+          )}
+
+          <p className="entry-privacy">
+            By entering you allow location access for this session. Closing the
+            tab removes your dot and ends everything.
+          </p>
+        </section>
       </div>
 
-      <button
-        onClick={enter}
-        disabled={status === "locating"}
-        className="rounded-full bg-emerald-400 px-8 py-3 font-semibold text-zinc-950 transition hover:bg-emerald-300 disabled:opacity-60"
-      >
-        {status === "locating" ? "Locating…" : "Enter Pulse"}
-      </button>
-
-      {status === "error" && (
-        <p className="max-w-sm text-center text-sm text-red-400">{error}</p>
-      )}
-
-      <p className="max-w-sm text-center text-xs text-zinc-500">
-        No sign-up. Your dot is placed 1–3&nbsp;km from your real location.
-        Nothing is stored — closing the tab ends everything.
-      </p>
-    </div>
+      <footer className="entry-footer">
+        <span>One world, no profiles</span>
+        <span>Coordinates softened by 1–3 km</span>
+      </footer>
+    </main>
   );
 }

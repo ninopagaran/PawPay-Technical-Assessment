@@ -491,17 +491,18 @@ export default function Home() {
       />
 
       {notice && (
-        <div className="absolute left-1/2 top-20 z-30 -translate-x-1/2 rounded-full bg-zinc-800/90 px-4 py-2 text-sm text-zinc-100 shadow-lg backdrop-blur">
+        <div className="signal-toast absolute left-1/2 top-20 z-30 -translate-x-1/2">
           {notice}
         </div>
       )}
 
       {conn.kind === "requesting" && (
-        <div className="absolute left-1/2 top-20 z-30 flex -translate-x-1/2 items-center gap-3 rounded-full bg-zinc-800/90 px-4 py-2 text-sm text-zinc-100 shadow-lg backdrop-blur">
-          <span>Requesting connection…</span>
+        <div className="signal-toast absolute left-1/2 top-20 z-30 flex -translate-x-1/2 items-center gap-4">
+          <span className="signal-toast-live" aria-hidden="true" />
+          <span>Sending your signal…</span>
           <button
             onClick={cancelRequest}
-            className="rounded-full bg-zinc-700 px-3 py-1 text-xs hover:bg-zinc-600"
+            className="signal-toast-action"
           >
             Cancel
           </button>
@@ -537,7 +538,7 @@ export default function Home() {
       )}
 
       {video === "requesting" && (
-        <div className="absolute bottom-24 left-1/2 z-30 -translate-x-1/2 rounded-full bg-zinc-800/90 px-4 py-2 text-sm text-zinc-100 shadow-lg backdrop-blur">
+        <div className="signal-toast absolute bottom-24 left-1/2 z-30 -translate-x-1/2">
           Waiting for stranger to accept video…
         </div>
       )}

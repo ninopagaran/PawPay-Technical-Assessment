@@ -39,7 +39,10 @@
 
 ## Phase 2 — Make it good
 
-Not started.
+- picked a Night Signal direction, dark and warm instead of neon tech style
+  first pass adds the type, color system, entry screen and map framing
+- kept the map as main focus and used ember colors for people so it still feels
+  alive but not like a dating app or game
 
 ## Phase 3 — Make it secure
 
