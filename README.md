@@ -18,7 +18,7 @@ short write-up is required (see **Deliverables**).
 
 ## See it live
 
-A working version is deployed at **https://pulse-silk-eta.vercel.app/**.
+A working version is deployed at **https://pulse-technical-assessment-rho.vercel.app/**.
 
 Because Pulse connects two strangers, you need **two participants** to try it: open
 the link in **two separate browser windows** (e.g. a normal window + an

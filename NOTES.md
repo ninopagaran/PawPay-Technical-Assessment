@@ -101,3 +101,9 @@
   id decides which one wins so both screens still ends up on the same question
 - tested it with two real headless browsers including replace, same-time clicks
   and sending normal chat after, so the extra feature doesnt break the basics
+
+## Deployment
+
+- deployed it on vercel at https://pulse-technical-assessment-rho.vercel.app/
+- vercel has the same pooled neon database and mapbox token as local
+- checked the live page, security headers and a real join, poll then leave flow
